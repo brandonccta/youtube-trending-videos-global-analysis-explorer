@@ -1,0 +1,98 @@
+import { useState, useRef, useEffect, useCallback } from 'react';
+import COUNTRIES from '../data/countries';
+
+export default function SearchBar({ onSelect, sensitivity, onSensitivityChange }) {
+  const [query, setQuery]       = useState('');
+  const [results, setResults]   = useState([]);
+  const [open, setOpen]         = useState(false);
+  const [focusIdx, setFocusIdx] = useState(-1);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    const handler = e => { if (!wrapRef.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleInput = e => {
+    const q = e.target.value;
+    setQuery(q); setFocusIdx(-1);
+    if (!q.trim()) { setResults([]); setOpen(false); return; }
+    const m = COUNTRIES.filter(c => c.name.toLowerCase().includes(q.toLowerCase())).slice(0, 8);
+    setResults(m); setOpen(m.length > 0);
+  };
+
+  const pick = useCallback(c => {
+    setQuery(c.name); setOpen(false); setResults([]);
+    onSelect(c);
+  }, [onSelect]);
+
+  const handleKey = e => {
+    if (!open) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setFocusIdx(i => Math.min(i+1, results.length-1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setFocusIdx(i => Math.max(i-1, 0)); }
+    else if (e.key === 'Enter' && focusIdx >= 0) pick(results[focusIdx]);
+    else if (e.key === 'Escape') setOpen(false);
+  };
+
+  const hl = (text, q) => {
+    if (!q) return text;
+    const i = text.toLowerCase().indexOf(q.toLowerCase());
+    if (i < 0) return text;
+    return <>{text.slice(0,i)}<strong className="text-ge-accent font-medium">{text.slice(i, i+q.length)}</strong>{text.slice(i+q.length)}</>;
+  };
+
+  return (
+    <div className="flex items-center gap-4 flex-1">
+      {/* Search input */}
+      <div className="relative flex-1 max-w-md" ref={wrapRef}>
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ge-muted text-base pointer-events-none select-none">⌕</span>
+        <input
+          className="w-full bg-ge-surface border border-ge-border rounded-lg py-2 pl-9 pr-8 font-mono text-[0.75rem] text-ge-text outline-none transition-all focus:border-ge-accent focus:shadow-[0_0_0_3px_rgba(56,189,248,0.12)] placeholder:text-ge-muted"
+          value={query}
+          onChange={handleInput}
+          onKeyDown={handleKey}
+          placeholder="Search for a country..."
+          autoComplete="off"
+          spellCheck={false}
+        />
+        {query && (
+          <button
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ge-muted hover:text-ge-text text-[0.65rem] px-1 transition-colors"
+            onClick={() => { setQuery(''); setOpen(false); }}
+          >✕</button>
+        )}
+
+        {/* Dropdown */}
+        {open && (
+          <div className="absolute top-[calc(100%+6px)] left-0 right-0 bg-ge-surface border border-ge-border rounded-lg z-50 shadow-[0_20px_50px_rgba(0,0,0,0.7)] max-h-60 overflow-y-auto">
+            {results.map((c, i) => (
+              <div
+                key={c.iso}
+                className={`flex items-center justify-between px-4 py-2.5 cursor-pointer border-b border-ge-border last:border-0 text-[0.74rem] transition-colors ${i === focusIdx ? 'bg-ge-surface2' : 'hover:bg-ge-surface2'}`}
+                onMouseDown={() => pick(c)}
+                onMouseEnter={() => setFocusIdx(i)}
+              >
+                <span className="text-ge-text">{hl(c.name, query)}</span>
+                <span className="text-ge-muted text-[0.62rem] ml-3 shrink-0">{c.iso}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Sensitivity slider */}
+      <div className="flex items-center gap-2.5 shrink-0 border-l border-ge-border pl-4">
+        <span className="text-[0.58rem] uppercase tracking-widest text-ge-muted whitespace-nowrap">Sensitivity</span>
+        <input
+          type="range"
+          min={1} max={10} step={1}
+          value={sensitivity}
+          onChange={e => onSensitivityChange(Number(e.target.value))}
+          className="w-20 h-[3px] appearance-none bg-ge-border rounded-full outline-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-ge-accent [&::-webkit-slider-thumb]:shadow-[0_0_8px_rgba(56,189,248,0.4)] [&::-webkit-slider-thumb]:cursor-pointer"
+        />
+        <span className="text-[0.65rem] text-ge-accent min-w-[1rem] text-right">{sensitivity}</span>
+      </div>
+    </div>
+  );
+}
