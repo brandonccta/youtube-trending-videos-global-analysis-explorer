@@ -283,13 +283,33 @@ app.get("/health", async (_req, res) => {
 });
 
 // ── Graceful shutdown ───────────────────────────────────────────
+let shuttingDown = false;
+
 function cleanup() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+
   console.log("\nShutting down…");
   pool?.end().catch(() => {});
-  tunnel?.targetClient?.end();
-  tunnel?.jumpClient?.end();
-  tunnel?.server?.close();
-  process.exit(0);
+
+  if (tunnel?.targetClient) {
+    console.log("[SSH] Stopping remote MySQL…");
+    tunnel.targetClient.exec(
+      "mysqladmin -h 127.0.0.1 -u root shutdown",
+      (err, stream) => {
+        if (err) console.error("[SSH] Failed to stop MySQL:", err.message);
+        else
+          stream.on("close", () => console.log("[SSH] Remote MySQL stopped."));
+
+        tunnel.targetClient?.end();
+        tunnel.jumpClient?.end();
+        tunnel.server?.close();
+        process.exit(0);
+      },
+    );
+  } else {
+    process.exit(0);
+  }
 }
 process.on("SIGINT", cleanup);
 process.on("SIGTERM", cleanup);
