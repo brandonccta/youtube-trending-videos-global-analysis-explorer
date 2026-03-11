@@ -57,22 +57,41 @@ The app runs with built-in mock data by default — no database required.
 
 ---
 
-## Connecting Your MySQL Database
+## Connecting to the Remote MySQL Database
 
-### Step 1 — Set up the frontend .env
+The backend connects to the `youtube_analysis` MySQL database on `class-148.cs.ucr.edu`
+through an SSH tunnel (via `bolt.cs.ucr.edu` as a jump host). Each team member needs
+to set up their SSH key and `.env` file.
+
+### Step 1 — Load your SSH key into the agent
+
+Your SSH private key (`~/.ssh/id_rsa`) is encrypted with a passphrase. The SSH agent
+holds the decrypted key in memory so the server can use it without prompting you.
 
 ```bash
-cp .env.example .env
+# Check if your key is already loaded
+ssh-add -l
+
+# If it says "The agent has no identities", add your key:
+ssh-add ~/.ssh/id_rsa
+# Enter your key passphrase when prompted
 ```
 
-Edit `.env`:
-```
-VITE_API_BASE=http://localhost:4000
-VITE_KEY_COLUMN=iso_code        # ← your column name
-VITE_USE_MOCK=false             # ← switch off mock data
+> **Note:** You need to re-run `ssh-add` after every reboot or new terminal session.
+> To verify it worked: `ssh-add -l` should show your key fingerprint.
+
+### Step 2 — Start the remote database
+
+The MySQL database on the class server must be started manually before the backend
+can connect to it.
+
+```bash
+ssh -J [YourNetID]@bolt.cs.ucr.edu cs179g@class-148.cs.ucr.edu "cs179g_db_start"
 ```
 
-### Step 2 — Set up the backend
+Wait a few seconds for MySQL to finish starting up.
+
+### Step 3 — Set up the backend `.env`
 
 ```bash
 cd server
@@ -80,57 +99,93 @@ npm install
 cp .env.example .env
 ```
 
-Edit `server/.env`:
+Edit `server/.env` and replace `[Your NetID]` with your UCR NetID:
+
 ```
-DB_HOST=localhost
+PORT=4000
+
+SSH_ENABLED=true
+
+SSH_JUMP_HOST=bolt.cs.ucr.edu
+SSH_JUMP_PORT=22
+SSH_JUMP_USER=[Your NetID]
+
+SSH_TARGET_HOST=class-148.cs.ucr.edu
+SSH_TARGET_PORT=22
+SSH_TARGET_USER=cs179g
+
+DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_USER=root
-DB_PASSWORD=your_password
-DB_NAME=your_database
-KEY_COLUMN=iso_code
+DB_PASSWORD=
+DB_NAME=youtube_analysis
 ```
 
-### Step 3 — Start both servers
+### Step 4 — Set up the frontend `.env`
+
+```bash
+# From the project root
+cp .env.example .env
+```
+
+Edit `.env`:
+
+```
+VITE_API_BASE=http://localhost:4000
+VITE_KEY_COLUMN=iso_code
+VITE_USE_MOCK=false
+```
+
+### Step 5 — Start both servers
 
 Terminal 1 (API):
+
 ```bash
 cd server
 npm run dev
 ```
 
+You should see:
+
+```
+[SSH] Jump host connected  (bolt.cs.ucr.edu)
+[SSH] Target host connected (class-148.cs.ucr.edu)
+[SSH] Tunnel open  localhost:XXXXX → 127.0.0.1:3306
+[DB] Connected to "youtube_analysis"
+
+YouTube Analysis API  →  http://localhost:4000
+```
+
 Terminal 2 (React):
+
 ```bash
-# from project root
+# From the project root
 npm run dev
 ```
 
----
+Open http://localhost:3000.
 
-## Expected MySQL Table Shape
+### Stopping
 
-Your `countries` table must have at least a lookup column (default: `iso_code`).
-All other columns are displayed automatically in the sidebar.
+Press `Ctrl+C` in the API terminal. This closes the SSH tunnel and shuts down
+the remote MySQL database automatically.
 
-```sql
-CREATE TABLE countries (
-  id              INT PRIMARY KEY AUTO_INCREMENT,
-  iso_code        CHAR(3) NOT NULL,   -- e.g. 'USA'
-  country         VARCHAR(100),
-  capital         VARCHAR(100),
-  region          VARCHAR(100),
-  population      VARCHAR(50),
-  gdp             VARCHAR(50),
-  currency        CHAR(3),
-  area            VARCHAR(50),
-  life_expectancy VARCHAR(20),
-  languages       VARCHAR(200),
-  exports         VARCHAR(200),
-  imports         VARCHAR(200),
-  hdi             DECIMAL(4,3),
-  -- add any other columns you want — they appear in the sidebar automatically
-  INDEX (iso_code)
-);
+To stop the database manually:
+
+```bash
+ssh -J [YourNetID]@bolt.cs.ucr.edu cs179g@class-148.cs.ucr.edu "mysqladmin -h 127.0.0.1 -u root shutdown"
 ```
+
+### Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `Cannot parse privateKey: Encrypted private OpenSSH key detected, but no passphrase given` | Run `ssh-add ~/.ssh/id_rsa` and enter your key passphrase |
+| `All configured authentication methods failed` (jump host) | Your SSH key isn't loaded — run `ssh-add -l` to check |
+| `All configured authentication methods failed` (target host) | Your public key isn't in the class server's `authorized_keys` |
+| `Connection lost: The server closed the connection` | Remote MySQL isn't running — start it with `cs179g_db_start` (see Step 2) |
+| `EADDRINUSE: address already in use :::4000` | Another server is on port 4000 — run `lsof -ti:4000 \| xargs kill -9` |
+| SSH connection times out | Check that you're on the UCR network or VPN |
 
 ---
 
