@@ -1,14 +1,11 @@
-// hooks/useCountryData.js
-// Encapsulates all data-fetching logic for a selected country.
-// Components just call selectCountry(iso) and read { data, loading, error }.
-
 import { useState, useCallback } from 'react';
-import { fetchCountry } from '../api/countries';
+import { fetchTopChannels, fetchTopCategories } from '../api/countries';
 
 export function useCountryData() {
   const [selectedIso, setSelectedIso]   = useState(null);
   const [selectedName, setSelectedName] = useState(null);
-  const [data, setData]                 = useState(null);
+  const [channels, setChannels]         = useState([]);
+  const [categories, setCategories]     = useState([]);
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState(null);
 
@@ -16,13 +13,18 @@ export function useCountryData() {
     if (!iso) return;
     setSelectedIso(iso);
     setSelectedName(name);
-    setData(null);
+    setChannels([]);
+    setCategories([]);
     setError(null);
     setLoading(true);
 
     try {
-      const result = await fetchCountry(iso);
-      setData(result);
+      const [ch, cat] = await Promise.all([
+        fetchTopChannels(name),
+        fetchTopCategories(name),
+      ]);
+      setChannels(ch);
+      setCategories(cat);
     } catch (err) {
       setError(err.message ?? 'Unknown error');
     } finally {
@@ -33,10 +35,11 @@ export function useCountryData() {
   const clear = useCallback(() => {
     setSelectedIso(null);
     setSelectedName(null);
-    setData(null);
+    setChannels([]);
+    setCategories([]);
     setError(null);
     setLoading(false);
   }, []);
 
-  return { selectedIso, selectedName, data, loading, error, selectCountry, clear };
+  return { selectedIso, selectedName, channels, categories, loading, error, selectCountry, clear };
 }

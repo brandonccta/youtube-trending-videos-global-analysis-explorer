@@ -1,22 +1,45 @@
-import { buildSqlString } from '../api/countries';
+import { useState } from 'react';
 
-const FEATURED = ['population','gdp','capital','region','life_expectancy','area'];
-const LABELS = {
-  population:'Population', gdp:'GDP', capital:'Capital', region:'Region',
-  life_expectancy:'Life Expectancy', area:'Land Area', currency:'Currency',
-  hdi:'HDI Score', languages:'Languages', exports:'Top Exports', imports:'Top Imports',
+function formatViews(n) {
+  if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(1) + 'B';
+  if (n >= 1_000_000)     return (n / 1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000)         return (n / 1_000).toFixed(1) + 'K';
+  return String(n);
+}
+
+const CATEGORY_COLORS = {
+  'Gaming':               { bg: 'rgba(139,92,246,0.08)',  border: 'rgba(139,92,246,0.35)', text: '#a78bfa' },
+  'Sports':               { bg: 'rgba(52,211,153,0.08)',  border: 'rgba(52,211,153,0.35)', text: '#34d399' },
+  'Music':                { bg: 'rgba(251,146,60,0.08)',  border: 'rgba(251,146,60,0.35)', text: '#fb923c' },
+  'Entertainment':        { bg: 'rgba(56,189,248,0.08)',  border: 'rgba(56,189,248,0.35)', text: '#38bdf8' },
+  'People & Blogs':       { bg: 'rgba(244,114,182,0.08)', border: 'rgba(244,114,182,0.35)', text: '#f472b6' },
+  'News & Politics':      { bg: 'rgba(248,113,113,0.08)', border: 'rgba(248,113,113,0.35)', text: '#f87171' },
+  'Comedy':               { bg: 'rgba(253,224,71,0.08)',  border: 'rgba(253,224,71,0.35)',  text: '#fde047' },
+  'Education':            { bg: 'rgba(45,212,191,0.08)',  border: 'rgba(45,212,191,0.35)', text: '#2dd4bf' },
+  'Film & Animation':     { bg: 'rgba(129,140,248,0.08)', border: 'rgba(129,140,248,0.35)', text: '#818cf8' },
+  'Science & Technology': { bg: 'rgba(96,165,250,0.08)',  border: 'rgba(96,165,250,0.35)', text: '#60a5fa' },
+  'Howto & Style':        { bg: 'rgba(192,132,252,0.08)', border: 'rgba(192,132,252,0.35)', text: '#c084fc' },
+  'Autos & Vehicles':     { bg: 'rgba(74,222,128,0.08)',  border: 'rgba(74,222,128,0.35)', text: '#4ade80' },
+  'Travel & Events':      { bg: 'rgba(251,191,36,0.08)',  border: 'rgba(251,191,36,0.35)', text: '#fbbf24' },
+  'Pets & Animals':       { bg: 'rgba(251,146,60,0.08)',  border: 'rgba(251,146,60,0.35)', text: '#fb923c' },
 };
 
-export default function Sidebar({ selectedIso, selectedName, data, loading, error }) {
+const DEFAULT_CAT = { bg: 'rgba(56,189,248,0.06)', border: 'rgba(56,189,248,0.2)', text: '#38bdf8' };
+
+const TABS = [
+  { id: 'channels',   label: 'Top Channels' },
+  { id: 'categories', label: 'Top Categories' },
+];
+
+export default function Sidebar({ selectedIso, selectedName, channels, categories, loading, error }) {
+  const [activeTab, setActiveTab] = useState('channels');
   const hasSelection = !!selectedIso;
-  const keys     = data ? Object.keys(data) : [];
-  const featured = FEATURED.filter(k => keys.includes(k));
-  const rest     = keys.filter(k => !FEATURED.includes(k) && k !== 'country' && k !== 'iso_code');
+  const hasData = activeTab === 'channels' ? channels.length > 0 : categories.length > 0;
 
   return (
     <aside className="w-80 shrink-0 bg-ge-panel border-l border-ge-border flex flex-col overflow-hidden">
 
-      {/* Top header */}
+      {/* Header */}
       <div className={`px-6 pt-5 pb-4 border-b border-ge-border relative overflow-hidden shrink-0 ${hasSelection ? 'after:absolute after:top-0 after:left-0 after:right-0 after:h-0.5 after:bg-linear-to-r after:from-transparent after:via-ge-accent after:to-transparent' : ''}`}>
         <div className="text-[0.56rem] tracking-[0.16em] uppercase text-ge-muted mb-2">Selected Country</div>
         <div className="font-display font-black text-[1.55rem] text-ge-text leading-tight tracking-tight min-h-[1.8rem]">
@@ -25,11 +48,28 @@ export default function Sidebar({ selectedIso, selectedName, data, loading, erro
         {hasSelection && (
           <div className="flex gap-1.5 flex-wrap mt-2.5">
             <span className="bg-ge-surface border border-ge-border rounded px-2 py-0.5 text-[0.6rem] text-ge-accent">{selectedIso}</span>
-            {data?.region   && <span className="bg-[rgba(245,158,11,0.05)] border border-[rgba(245,158,11,0.3)] rounded px-2 py-0.5 text-[0.6rem] text-ge-gold">{data.region}</span>}
-            {data?.currency && <span className="bg-ge-surface border border-ge-border rounded px-2 py-0.5 text-[0.6rem] text-ge-accent">{data.currency}</span>}
           </div>
         )}
       </div>
+
+      {/* Tabs */}
+      {hasSelection && !loading && (
+        <div className="flex border-b border-ge-border shrink-0">
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 py-2.5 text-[0.62rem] font-display font-semibold tracking-wide uppercase transition-colors ${
+                activeTab === tab.id
+                  ? 'text-ge-accent border-b-2 border-ge-accent'
+                  : 'text-ge-muted hover:text-ge-dim'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto p-5">
@@ -46,93 +86,144 @@ export default function Sidebar({ selectedIso, selectedName, data, loading, erro
         {hasSelection && loading && (
           <div className="flex flex-col items-center justify-center gap-4 py-12 text-ge-muted text-[0.68rem]">
             <div className="w-6 h-6 border-2 border-ge-border border-t-ge-accent rounded-full animate-spin-slow" />
-            <span>Querying database...</span>
+            <span>Fetching data...</span>
           </div>
         )}
 
         {/* Error */}
         {hasSelection && !loading && error && (
-          <>
-            <SqlBox iso={selectedIso} />
-            <div className="bg-[rgba(248,113,113,0.08)] border border-[rgba(248,113,113,0.3)] rounded-lg px-3.5 py-3 text-[0.67rem] text-ge-red mb-2">⚠ {error}</div>
-            <p className="text-[0.63rem] text-ge-muted leading-relaxed">Check your API endpoint in the config below, or set <code className="text-ge-accent bg-ge-surface px-1 rounded">VITE_USE_MOCK=true</code>.</p>
-          </>
+          <div className="bg-[rgba(248,113,113,0.08)] border border-[rgba(248,113,113,0.3)] rounded-lg px-3.5 py-3 text-[0.67rem] text-ge-red">
+            ⚠ {error}
+          </div>
         )}
 
         {/* No data */}
-        {hasSelection && !loading && !error && !data && (
-          <>
-            <SqlBox iso={selectedIso} />
-            <div className="flex flex-col items-center gap-3 py-6 text-ge-muted text-center">
-              <div className="text-3xl opacity-15">🔍</div>
-              <p className="text-[0.68rem]">No record found for <strong className="text-ge-text">{selectedName}</strong>.</p>
-            </div>
-          </>
+        {hasSelection && !loading && !error && !hasData && (
+          <div className="flex flex-col items-center gap-3 py-6 text-ge-muted text-center">
+            <div className="text-3xl opacity-15">🔍</div>
+            <p className="text-[0.68rem]">No trending data for <strong className="text-ge-text">{selectedName}</strong>.</p>
+          </div>
         )}
 
-        {/* Data */}
-        {hasSelection && !loading && !error && data && (
-          <>
-            <SqlBox iso={selectedIso} />
-
-            {/* Stat grid */}
-            <div className="grid grid-cols-2 gap-2 mb-4">
-              {featured.map((k, i) => {
-                const isWide   = k === 'capital' || k === 'region';
-                const isAccent = k === 'gdp' || k === 'population';
-                const isSm     = isWide;
-                return (
-                  <div
-                    key={k}
-                    className={`bg-ge-surface border border-ge-border rounded-lg p-3 hover:border-ge-accent transition-colors animate-fade-in ${isWide ? 'col-span-2' : ''}`}
-                    style={{ animationDelay: `${i * 30}ms` }}
-                  >
-                    <div className="text-[0.55rem] tracking-[0.12em] uppercase text-ge-muted mb-1">{LABELS[k] ?? k}</div>
-                    <div className={`font-display font-bold leading-snug ${isSm ? 'text-[0.82rem]' : 'text-[0.95rem]'} ${isAccent ? 'text-ge-accent' : 'text-ge-text'}`}>
-                      {data[k]}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Extra rows */}
-            {rest.length > 0 && (
-              <>
-                <div className="text-[0.56rem] tracking-[0.14em] uppercase text-ge-muted mb-2.5 pb-1.5 border-b border-ge-border">Additional Fields</div>
-                {rest.map(k => (
-                  <div key={k} className="flex justify-between items-start py-1.5 border-b border-ge-border/50 last:border-0 gap-3">
-                    <span className="text-[0.62rem] text-ge-muted shrink-0">{LABELS[k] ?? k}</span>
-                    <span className="text-[0.65rem] text-ge-text text-right">{data[k]}</span>
-                  </div>
-                ))}
-              </>
-            )}
-          </>
+        {/* Channels tab */}
+        {hasSelection && !loading && !error && activeTab === 'channels' && channels.length > 0 && (
+          <ChannelList channels={channels} />
         )}
-      </div>
 
-      {/* Config panel */}
-      <div className="px-5 py-4 border-t border-ge-border bg-ge-surface shrink-0">
-        <div className="text-[0.56rem] tracking-widest uppercase text-ge-muted mb-2">⚙ Backend API</div>
-        <input className="w-full bg-ge-panel border border-ge-border rounded px-2.5 py-1.5 font-mono text-[0.63rem] text-ge-text outline-none focus:border-ge-accent transition-colors mb-1.5 placeholder:text-ge-muted" id="cfg-url" placeholder="http://localhost:4000" defaultValue="http://localhost:4000" />
-        <input className="w-full bg-ge-panel border border-ge-border rounded px-2.5 py-1.5 font-mono text-[0.63rem] text-ge-text outline-none focus:border-ge-accent transition-colors mb-2.5 placeholder:text-ge-muted" id="cfg-col" placeholder="Key column (e.g. iso_code)" defaultValue="iso_code" />
-        <button className="bg-ge-accent text-black font-display font-bold text-[0.7rem] tracking-wide px-3.5 py-1.5 rounded hover:opacity-85 transition-opacity">
-          View Setup Instructions
-        </button>
+        {/* Categories tab */}
+        {hasSelection && !loading && !error && activeTab === 'categories' && categories.length > 0 && (
+          <CategoryList categories={categories} />
+        )}
       </div>
     </aside>
   );
 }
 
-function SqlBox({ iso }) {
+function ChannelList({ channels }) {
   return (
-    <div className="bg-[#020810] border border-ge-border rounded-lg px-3.5 py-2.5 text-[0.6rem] leading-relaxed mb-4 break-all font-mono">
-      <span className="text-ge-indigo">SELECT</span>{' '}*{' '}
-      <span className="text-ge-indigo">FROM</span>{' '}
-      <span className="text-ge-gold">countries</span>{' '}
-      <span className="text-ge-indigo">WHERE</span>{' '}
-      iso_code = <span className="text-ge-green">'{iso}'</span>
-    </div>
+    <>
+      <div className="text-[0.56rem] tracking-[0.14em] uppercase text-ge-muted mb-3 pb-1.5 border-b border-ge-border">
+        Top Trending Channels
+      </div>
+      <div className="flex flex-col gap-2">
+        {channels.map((ch, i) => {
+          const cat = CATEGORY_COLORS[ch.video_category_id] ?? DEFAULT_CAT;
+          return (
+            <div
+              key={`${ch.rank}-${ch.channel_title}`}
+              className="bg-ge-surface border border-ge-border rounded-lg p-3 hover:border-ge-accent transition-colors animate-fade-in"
+              style={{ animationDelay: `${i * 40}ms` }}
+            >
+              <div className="flex items-start gap-2.5">
+                <div className="shrink-0 w-7 h-7 rounded-md bg-ge-surface2 border border-ge-border flex items-center justify-center font-display font-bold text-[0.75rem] text-ge-accent">
+                  {ch.rank}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-display font-semibold text-[0.78rem] text-ge-text leading-snug truncate" title={ch.channel_title}>
+                    {ch.channel_title}
+                  </div>
+                  <span
+                    className="inline-block mt-1 rounded px-1.5 py-0.5 text-[0.52rem] font-medium tracking-wide"
+                    style={{ background: cat.bg, border: `1px solid ${cat.border}`, color: cat.text }}
+                  >
+                    {ch.video_category_id}
+                  </span>
+                </div>
+              </div>
+              <div className="flex gap-4 mt-2.5 pt-2 border-t border-ge-border/50">
+                <div>
+                  <div className="text-[0.48rem] tracking-[0.1em] uppercase text-ge-muted">Views</div>
+                  <div className="font-display font-bold text-[0.8rem] text-ge-accent">{formatViews(ch.total_views)}</div>
+                </div>
+                <div>
+                  <div className="text-[0.48rem] tracking-[0.1em] uppercase text-ge-muted">Trending</div>
+                  <div className="font-display font-bold text-[0.8rem] text-ge-text">{ch.trending_appearances}x</div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+function CategoryList({ categories }) {
+  const maxViews = Math.max(...categories.map(c => c.total_views));
+
+  return (
+    <>
+      <div className="text-[0.56rem] tracking-[0.14em] uppercase text-ge-muted mb-3 pb-1.5 border-b border-ge-border">
+        Top Trending Categories
+      </div>
+      <div className="flex flex-col gap-2">
+        {categories.map((cat, i) => {
+          const colors = CATEGORY_COLORS[cat.video_category_id] ?? DEFAULT_CAT;
+          const barWidth = (cat.total_views / maxViews) * 100;
+          return (
+            <div
+              key={`${cat.rank}-${cat.video_category_id}`}
+              className="bg-ge-surface border border-ge-border rounded-lg p-3 hover:border-ge-accent transition-colors animate-fade-in"
+              style={{ animationDelay: `${i * 40}ms` }}
+            >
+              <div className="flex items-center gap-2.5 mb-2">
+                <div className="shrink-0 w-7 h-7 rounded-md bg-ge-surface2 border border-ge-border flex items-center justify-center font-display font-bold text-[0.75rem] text-ge-accent">
+                  {cat.rank}
+                </div>
+                <span
+                  className="rounded px-2 py-0.5 text-[0.65rem] font-display font-semibold"
+                  style={{ background: colors.bg, border: `1px solid ${colors.border}`, color: colors.text }}
+                >
+                  {cat.video_category_id}
+                </span>
+              </div>
+
+              {/* Views bar */}
+              <div className="h-1.5 rounded-full bg-ge-surface2 overflow-hidden mb-2.5">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{ width: `${barWidth}%`, background: colors.text }}
+                />
+              </div>
+
+              <div className="flex gap-4">
+                <div>
+                  <div className="text-[0.48rem] tracking-[0.1em] uppercase text-ge-muted">Total Views</div>
+                  <div className="font-display font-bold text-[0.8rem] text-ge-accent">{formatViews(cat.total_views)}</div>
+                </div>
+                <div>
+                  <div className="text-[0.48rem] tracking-[0.1em] uppercase text-ge-muted">Avg Views</div>
+                  <div className="font-display font-bold text-[0.8rem] text-ge-text">{formatViews(cat.avg_views)}</div>
+                </div>
+                <div>
+                  <div className="text-[0.48rem] tracking-[0.1em] uppercase text-ge-muted">Trending</div>
+                  <div className="font-display font-bold text-[0.8rem] text-ge-text">{formatViews(cat.trending_appearances)}x</div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
