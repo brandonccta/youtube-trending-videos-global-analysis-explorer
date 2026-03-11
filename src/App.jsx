@@ -9,7 +9,7 @@ export default function App() {
   const [sensitivity, setSensitivity] = useState(5);
   const [flyTarget, setFlyTarget]     = useState(null);
 
-  const { selectedIso, selectedName, data, loading, error, selectCountry } = useCountryData();
+  const { selectedIso, selectedName, channels, categories, loading, error, selectCountry } = useCountryData();
 
   useEffect(() => { window.__COUNTRY_LIST__ = COUNTRIES; }, []);
 
@@ -38,7 +38,7 @@ export default function App() {
       </header>
       <div className="flex flex-1 overflow-hidden">
         <GlobeView selectedIso={selectedIso} onCountryClick={handleGlobeClick} flyTarget={flyTarget} sensitivity={sensitivity} onFlyDone={handleFlyDone} />
-        <Sidebar selectedIso={selectedIso} selectedName={selectedName} data={data} loading={loading} error={error} />
+        <Sidebar selectedIso={selectedIso} selectedName={selectedName} channels={channels} categories={categories} loading={loading} error={error} />
       </div>
     </div>
   );
