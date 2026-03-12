@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import COUNTRIES from '../data/countries';
 
-export default function SearchBar({ onSelect, sensitivity, onSensitivityChange }) {
+export default function SearchBar({ onSelect, onFocus, onFirstInteraction }) {
   const [query, setQuery]       = useState('');
   const [results, setResults]   = useState([]);
   const [open, setOpen]         = useState(false);
@@ -15,6 +15,7 @@ export default function SearchBar({ onSelect, sensitivity, onSensitivityChange }
   }, []);
 
   const handleInput = e => {
+    onFirstInteraction?.();
     const q = e.target.value;
     setQuery(q); setFocusIdx(-1);
     if (!q.trim()) { setResults([]); setOpen(false); return; }
@@ -22,10 +23,23 @@ export default function SearchBar({ onSelect, sensitivity, onSensitivityChange }
     setResults(m); setOpen(m.length > 0);
   };
 
+  const handleFocus = useCallback(() => {
+    // Clear current selection + input so the user can immediately type a new country.
+    onFirstInteraction?.();
+    onFocus?.();
+    if (query) {
+      setQuery('');
+      setResults([]);
+      setOpen(false);
+      setFocusIdx(-1);
+    }
+  }, [onFirstInteraction, onFocus, query]);
+
   const pick = useCallback(c => {
+    onFirstInteraction?.();
     setQuery(c.name); setOpen(false); setResults([]);
     onSelect(c);
-  }, [onSelect]);
+  }, [onFirstInteraction, onSelect]);
 
   const handleKey = e => {
     if (!open) return;
@@ -43,15 +57,14 @@ export default function SearchBar({ onSelect, sensitivity, onSensitivityChange }
   };
 
   return (
-    <div className="flex items-center gap-4 flex-1">
-      {/* Search input */}
-      <div className="relative flex-1 max-w-md" ref={wrapRef}>
+    <div className="relative w-full max-w-md" ref={wrapRef}>
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ge-muted text-base pointer-events-none select-none">⌕</span>
         <input
           className="w-full bg-ge-surface border border-ge-border rounded-lg py-2 pl-9 pr-8 font-mono text-[0.75rem] text-ge-text outline-none transition-all focus:border-ge-accent focus:shadow-[0_0_0_3px_rgba(56,189,248,0.12)] placeholder:text-ge-muted"
           value={query}
           onChange={handleInput}
           onKeyDown={handleKey}
+          onFocus={handleFocus}
           placeholder="Search for a country..."
           autoComplete="off"
           spellCheck={false}
@@ -59,7 +72,7 @@ export default function SearchBar({ onSelect, sensitivity, onSensitivityChange }
         {query && (
           <button
             className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ge-muted hover:text-ge-text text-[0.65rem] px-1 transition-colors"
-            onClick={() => { setQuery(''); setOpen(false); }}
+            onClick={() => { onFirstInteraction?.(); onFocus?.(); setQuery(''); setOpen(false); setResults([]); setFocusIdx(-1); }}
           >✕</button>
         )}
 
@@ -79,20 +92,6 @@ export default function SearchBar({ onSelect, sensitivity, onSensitivityChange }
             ))}
           </div>
         )}
-      </div>
-
-      {/* Sensitivity slider */}
-      <div className="flex items-center gap-2.5 shrink-0 border-l border-ge-border pl-4">
-        <span className="text-[0.58rem] uppercase tracking-widest text-ge-muted whitespace-nowrap">Sensitivity</span>
-        <input
-          type="range"
-          min={1} max={10} step={1}
-          value={sensitivity}
-          onChange={e => onSensitivityChange(Number(e.target.value))}
-          className="w-20 h-[3px] appearance-none bg-ge-border rounded-full outline-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-ge-accent [&::-webkit-slider-thumb]:shadow-[0_0_8px_rgba(56,189,248,0.4)] [&::-webkit-slider-thumb]:cursor-pointer"
-        />
-        <span className="text-[0.65rem] text-ge-accent min-w-[1rem] text-right">{sensitivity}</span>
-      </div>
     </div>
   );
 }

@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import tzLookup from 'tz-lookup';
+import COUNTRIES from '../data/countries';
 
 function formatViews(n) {
   if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(1) + 'B';
@@ -7,7 +9,7 @@ function formatViews(n) {
   return String(n);
 }
 
-const CATEGORY_COLORS = {
+export const CATEGORY_COLORS = {
   'Gaming':               { bg: 'rgba(139,92,246,0.08)',  border: 'rgba(139,92,246,0.35)', text: '#a78bfa' },
   'Sports':               { bg: 'rgba(52,211,153,0.08)',  border: 'rgba(52,211,153,0.35)', text: '#34d399' },
   'Music':                { bg: 'rgba(251,146,60,0.08)',  border: 'rgba(251,146,60,0.35)', text: '#fb923c' },
@@ -24,7 +26,7 @@ const CATEGORY_COLORS = {
   'Pets & Animals':       { bg: 'rgba(251,146,60,0.08)',  border: 'rgba(251,146,60,0.35)', text: '#fb923c' },
 };
 
-const DEFAULT_CAT = { bg: 'rgba(56,189,248,0.06)', border: 'rgba(56,189,248,0.2)', text: '#38bdf8' };
+export const DEFAULT_CAT = { bg: 'rgba(56,189,248,0.06)', border: 'rgba(56,189,248,0.2)', text: '#38bdf8' };
 
 const TABS = [
   { id: 'channels',   label: 'Top Channels' },
@@ -34,7 +36,51 @@ const TABS = [
 export default function Sidebar({ selectedIso, selectedName, channels, categories, loading, error }) {
   const [activeTab, setActiveTab] = useState('channels');
   const hasSelection = !!selectedIso;
-  const hasData = activeTab === 'channels' ? channels.length > 0 : categories.length > 0;
+  // Explicitly cap projections to the Top 10 results (API *should* already do this,
+  // but keeping it here prevents accidental "Top 9" regressions if upstream changes).
+  const topChannels = useMemo(() => channels.slice(0, 10), [channels]);
+  const topCategories = useMemo(() => categories.slice(0, 10), [categories]);
+
+  const hasData = activeTab === 'channels' ? topChannels.length > 0 : topCategories.length > 0;
+
+  const selectedCountry = useMemo(() => {
+    if (!selectedIso) return null;
+    return COUNTRIES.find(c => c.iso === selectedIso) ?? null;
+  }, [selectedIso]);
+
+  const timeZone = useMemo(() => {
+    if (!selectedCountry) return null;
+    try {
+      return tzLookup(selectedCountry.lat, selectedCountry.lng);
+    } catch {
+      return null;
+    }
+  }, [selectedCountry]);
+
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    if (!hasSelection || !timeZone) return;
+    // Update once per second (live clock).
+    const id = window.setInterval(() => setNow(new Date()), 1000);
+    // Ensure we don't show a stale time if the user selects a country mid-minute.
+    setNow(new Date());
+    return () => window.clearInterval(id);
+  }, [hasSelection, timeZone]);
+
+  const formattedTime = useMemo(() => {
+    if (!timeZone) return null;
+    try {
+      return new Intl.DateTimeFormat(undefined, {
+        timeZone,
+        weekday: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }).format(now);
+    } catch {
+      return null;
+    }
+  }, [now, timeZone]);
 
   return (
     <aside className="w-80 shrink-0 bg-ge-panel border-l border-ge-border flex flex-col overflow-hidden">
@@ -46,8 +92,25 @@ export default function Sidebar({ selectedIso, selectedName, channels, categorie
           {selectedName ?? '—'}
         </div>
         {hasSelection && (
-          <div className="flex gap-1.5 flex-wrap mt-2.5">
-            <span className="bg-ge-surface border border-ge-border rounded px-2 py-0.5 text-[0.6rem] text-ge-accent">{selectedIso}</span>
+          <div className="mt-2 text-[0.62rem] text-ge-muted">
+            <div className="flex items-center justify-between gap-3">
+              <span className="tracking-wide uppercase text-[0.54rem] text-ge-muted">Local time</span>
+              <span className="font-display font-semibold text-ge-text">
+                {formattedTime ?? '—'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3 mt-1">
+              <span className="tracking-wide uppercase text-[0.54rem] text-ge-muted">Timezone</span>
+              <span className="font-display font-semibold text-ge-dim">
+                {timeZone ?? '—'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3 mt-1">
+              <span className="tracking-wide uppercase text-[0.54rem] text-ge-muted">ISO</span>
+              <span className="bg-ge-surface border border-ge-border rounded px-2 py-0.5 text-[0.6rem] text-ge-accent">
+                {selectedIso}
+              </span>
+            </div>
           </div>
         )}
       </div>
@@ -106,13 +169,13 @@ export default function Sidebar({ selectedIso, selectedName, channels, categorie
         )}
 
         {/* Channels tab */}
-        {hasSelection && !loading && !error && activeTab === 'channels' && channels.length > 0 && (
-          <ChannelList channels={channels} />
+        {hasSelection && !loading && !error && activeTab === 'channels' && topChannels.length > 0 && (
+          <ChannelList channels={topChannels} />
         )}
 
         {/* Categories tab */}
-        {hasSelection && !loading && !error && activeTab === 'categories' && categories.length > 0 && (
-          <CategoryList categories={categories} />
+        {hasSelection && !loading && !error && activeTab === 'categories' && topCategories.length > 0 && (
+          <CategoryList categories={topCategories} />
         )}
       </div>
     </aside>
@@ -152,11 +215,11 @@ function ChannelList({ channels }) {
               </div>
               <div className="flex gap-4 mt-2.5 pt-2 border-t border-ge-border/50">
                 <div>
-                  <div className="text-[0.48rem] tracking-[0.1em] uppercase text-ge-muted">Views</div>
+                  <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">Views</div>
                   <div className="font-display font-bold text-[0.8rem] text-ge-accent">{formatViews(ch.total_views)}</div>
                 </div>
                 <div>
-                  <div className="text-[0.48rem] tracking-[0.1em] uppercase text-ge-muted">Trending</div>
+                  <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">Trending</div>
                   <div className="font-display font-bold text-[0.8rem] text-ge-text">{ch.trending_appearances}x</div>
                 </div>
               </div>
@@ -208,15 +271,15 @@ function CategoryList({ categories }) {
 
               <div className="flex gap-4">
                 <div>
-                  <div className="text-[0.48rem] tracking-[0.1em] uppercase text-ge-muted">Total Views</div>
+                  <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">Total Views</div>
                   <div className="font-display font-bold text-[0.8rem] text-ge-accent">{formatViews(cat.total_views)}</div>
                 </div>
                 <div>
-                  <div className="text-[0.48rem] tracking-[0.1em] uppercase text-ge-muted">Avg Views</div>
+                  <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">Avg Views</div>
                   <div className="font-display font-bold text-[0.8rem] text-ge-text">{formatViews(cat.avg_views)}</div>
                 </div>
                 <div>
-                  <div className="text-[0.48rem] tracking-[0.1em] uppercase text-ge-muted">Trending</div>
+                  <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">Trending</div>
                   <div className="font-display font-bold text-[0.8rem] text-ge-text">{formatViews(cat.trending_appearances)}x</div>
                 </div>
               </div>
