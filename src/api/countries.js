@@ -20,7 +20,7 @@ export async function fetchTopChannels(countryName) {
  */
 export async function fetchTopCategories(countryName) {
   if (!countryName) return [];
-  const url = `${API_BASE}/api/tables/top_categories_per_country?video_trending_country=${encodeURIComponent(countryName)}&limit=10`;
+  const url = `${API_BASE}/api/tables/top_categories_per_country?video_trending_country=${encodeURIComponent(countryName)}&limit=5`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
   return res.json();

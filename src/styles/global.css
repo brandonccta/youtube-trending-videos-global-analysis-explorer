@@ -117,3 +117,10 @@ html, body, #root {
 }
 
 .animate-explore-enter { animation: exploreEnter 0.35s ease-out both; }
+
+@keyframes exploreExit {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(22px); }
+}
+
+.animate-explore-exit { animation: exploreExit 0.35s ease-out forwards; }
