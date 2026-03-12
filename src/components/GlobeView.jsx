@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import * as d3 from 'd3';
 import * as topojson from 'topojson-client';
 import COUNTRIES from '../data/countries';
@@ -10,13 +10,24 @@ COUNTRIES.forEach(c => {
   NUM_TO_NAME[c.num] = c.name;
 });
 
-export default function GlobeView({ selectedIso, onCountryClick, flyTarget, sensitivity = 5, onFlyDone }) {
+export default function GlobeView({
+  selectedIso,
+  onCountryClick,
+  flyTarget,
+  sensitivity = 5,
+  onFlyDone,
+  showHints = true,
+  onFirstInteraction,
+  onExploreMore,
+}) {
   const areaRef  = useRef(null);
   const svgRef   = useRef(null);
   const tipRef   = useRef(null);
+  const [isExiting, setIsExiting] = useState(false);
   const stateRef = useRef({
     rotation: [0, -20, 0], isDragging: false, flyTimer: null,
     projection: null, path: null, radius: 0, activeIso: null,
+    centroids: {},
   });
 
   const redraw = useCallback(() => {
@@ -28,7 +39,7 @@ export default function GlobeView({ selectedIso, onCountryClick, flyTarget, sens
     svg.select('.ge-grat').attr('d', s.path);
     svg.selectAll('.ge-country')
       .attr('d', s.path)
-      .attr('fill', d => NUM_TO_ISO[d.id] === s.activeIso ? '#38bdf8' : '#1a3a5c');
+      .attr('fill', d => NUM_TO_ISO[d.id] === s.activeIso ? 'var(--ge-globe-land-active)' : 'var(--ge-globe-land)');
   }, []);
 
   const setupGlobe = useCallback(() => {
@@ -36,46 +47,54 @@ export default function GlobeView({ selectedIso, onCountryClick, flyTarget, sens
     const area = areaRef.current, svgEl = svgRef.current;
     if (!area || !svgEl) return;
     const w = area.clientWidth, h = area.clientHeight;
-    s.radius = Math.min(w, h) * 0.42;
+    // Reserve space at the bottom for the hint row so it doesn't overlap the globe.
+    // This keeps the globe visually centered within the remaining vertical space.
+    const footerReservePx = 35;
+    const hEff = Math.max(0, h - footerReservePx);
+
+    s.radius = Math.min(w, hEff) * 0.42;
+    const cx = w / 2;
+    const cy = hEff / 2;
 
     const svg = d3.select(svgEl).attr('width', w).attr('height', h);
     svg.selectAll('*').remove();
 
     s.projection = d3.geoOrthographic()
-      .scale(s.radius).translate([w/2, h/2])
+      .scale(s.radius).translate([cx, cy])
       .clipAngle(90).rotate(s.rotation);
     s.path = d3.geoPath().projection(s.projection);
 
     const defs = svg.append('defs');
     const og = defs.append('radialGradient').attr('id','ge-og').attr('cx','38%').attr('cy','36%');
-    og.append('stop').attr('offset','0%').attr('stop-color','#0d2545');
-    og.append('stop').attr('offset','100%').attr('stop-color','#040d1e');
+    og.append('stop').attr('offset','0%').attr('stop-color','var(--ge-globe-ocean-0)');
+    og.append('stop').attr('offset','100%').attr('stop-color','var(--ge-globe-ocean-1)');
     const ag = defs.append('radialGradient').attr('id','ge-ag').attr('cx','50%').attr('cy','50%');
     ag.append('stop').attr('offset','75%').attr('stop-color','transparent');
-    ag.append('stop').attr('offset','100%').attr('stop-color','rgba(56,189,248,0.13)');
+    ag.append('stop').attr('offset','100%').attr('stop-color','var(--ge-globe-atmo)');
     const sg = defs.append('radialGradient').attr('id','ge-sg').attr('cx','32%').attr('cy','28%');
-    sg.append('stop').attr('offset','0%').attr('stop-color','rgba(255,255,255,0.07)');
+    sg.append('stop').attr('offset','0%').attr('stop-color','var(--ge-globe-sheen)');
     sg.append('stop').attr('offset','60%').attr('stop-color','transparent');
 
-    svg.append('circle').attr('cx',w/2).attr('cy',h/2).attr('r',s.radius+18)
-      .attr('fill','none').attr('stroke','rgba(56,189,248,0.06)').attr('stroke-width',18);
-    svg.append('circle').attr('cx',w/2).attr('cy',h/2).attr('r',s.radius)
+    svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',s.radius+18)
+      .attr('fill','none').attr('stroke','var(--ge-globe-ring)').attr('stroke-width',18);
+    svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',s.radius)
       .attr('fill','url(#ge-og)');
     svg.append('path').datum(d3.geoGraticule()())
       .attr('class','ge-grat').attr('fill','none')
-      .attr('stroke','rgba(56,189,248,0.06)').attr('stroke-width',.5)
+      .attr('stroke','var(--ge-globe-graticule)').attr('stroke-width',.5)
       .attr('d', s.path).attr('pointer-events','none');
 
     const g = svg.append('g').attr('id','ge-countries');
 
-    svg.append('circle').attr('cx',w/2).attr('cy',h/2).attr('r',s.radius)
+    svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',s.radius)
       .attr('fill','url(#ge-ag)').attr('pointer-events','none');
-    svg.append('circle').attr('cx',w/2).attr('cy',h/2).attr('r',s.radius)
+    svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',s.radius)
       .attr('fill','url(#ge-sg)').attr('pointer-events','none');
 
     // D3 drag on the SVG for rotation
     svg.call(d3.drag()
       .on('start', event => {
+        onFirstInteraction?.();
         if (s.flyTimer) { s.flyTimer.stop(); s.flyTimer = null; }
         s.isDragging = false;
         s._x0 = event.x; s._y0 = event.y;
@@ -83,7 +102,7 @@ export default function GlobeView({ selectedIso, onCountryClick, flyTarget, sens
       })
       .on('drag', event => {
         s.isDragging = true;
-        const sens = 0.2 * Math.pow(15, (sensitivity - 1) / 9);
+        const sens = 0.2 * Math.pow(15, sensitivity / 10);
         const dx = (event.x - s._x0) * sens * (180 / (Math.PI * s.radius));
         const dy = (event.y - s._y0) * sens * (180 / (Math.PI * s.radius));
         s.rotation = [s._r0[0] + dx, Math.max(-90, Math.min(90, s._r0[1] - dy)), s._r0[2]];
@@ -95,14 +114,22 @@ export default function GlobeView({ selectedIso, onCountryClick, flyTarget, sens
 
     d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then(world => {
       const features = topojson.feature(world, world.objects.countries).features;
+      
+      s.centroids = {};
+      features.forEach(f => {
+        const iso = NUM_TO_ISO[f.id];
+        if (!iso) return;
+        const [lon, lat] = d3.geoCentroid(f);
+        s.centroids[iso] = { lon, lat };
+      });
 
       g.selectAll('.ge-country')
         .data(features)
         .enter().append('path')
         .attr('class','ge-country')
         .attr('d', s.path)
-        .attr('fill', d => NUM_TO_ISO[d.id] === s.activeIso ? '#38bdf8' : '#1a3a5c')
-        .attr('stroke','#060f1e')
+        .attr('fill', d => NUM_TO_ISO[d.id] === s.activeIso ? 'var(--ge-globe-land-active)' : 'var(--ge-globe-land)')
+        .attr('stroke','var(--ge-globe-stroke)')
         .attr('stroke-width', .5)
         .style('cursor','pointer')
         // ── Use pointer events — D3 drag does not intercept these ──
@@ -111,7 +138,7 @@ export default function GlobeView({ selectedIso, onCountryClick, flyTarget, sens
           const iso  = NUM_TO_ISO[d.id];
           const name = NUM_TO_NAME[d.id];
           if (!iso || !name) return;
-          d3.select(this).attr('fill', iso === s.activeIso ? '#38bdf8' : '#2563eb');
+          d3.select(this).attr('fill', iso === s.activeIso ? 'var(--ge-globe-land-active)' : 'var(--ge-globe-land-hover)');
           const tip = tipRef.current;
           if (tip) {
             tip.style.opacity = '1';
@@ -130,7 +157,7 @@ export default function GlobeView({ selectedIso, onCountryClick, flyTarget, sens
         })
         .on('pointerout', function(event, d) {
           const iso = NUM_TO_ISO[d.id];
-          d3.select(this).attr('fill', iso === s.activeIso ? '#38bdf8' : '#1a3a5c');
+          d3.select(this).attr('fill', iso === s.activeIso ? 'var(--ge-globe-land-active)' : 'var(--ge-globe-land)');
           const tip = tipRef.current;
           if (tip) tip.style.opacity = '0';
         })
@@ -139,10 +166,12 @@ export default function GlobeView({ selectedIso, onCountryClick, flyTarget, sens
           const iso  = NUM_TO_ISO[d.id];
           const name = NUM_TO_NAME[d.id];
           if (!iso || !name) return;
+          onFirstInteraction?.();
           onCountryClick(iso, name);
+          flyToIso(iso);
         });
     });
-  }, [sensitivity, onCountryClick, redraw]);
+  }, [sensitivity, onCountryClick, onFirstInteraction, redraw]);
 
   useEffect(() => { setupGlobe(); }, [setupGlobe]);
 
@@ -150,6 +179,30 @@ export default function GlobeView({ selectedIso, onCountryClick, flyTarget, sens
     stateRef.current.activeIso = selectedIso;
     redraw();
   }, [selectedIso, redraw]);
+
+  const flyToIso = useCallback((iso) => {
+    const s = stateRef.current;
+    if (!iso || !s.centroids[iso]) return;
+    const { lon, lat } = s.centroids[iso];
+  
+    if (s.flyTimer) s.flyTimer.stop();
+  
+    const start  = [...s.rotation];
+    const end    = [-lon, -lat, 0];
+    const interp = d3.interpolate(start, end);
+  
+    let t0 = null;
+    s.flyTimer = d3.timer(elapsed => {
+      if (!t0) t0 = elapsed;
+      const t = Math.min(1, (elapsed - t0) / 1200);
+      s.rotation = interp(d3.easeCubicInOut(t));
+      redraw();
+      if (t >= 1) {
+        s.flyTimer.stop();
+        s.flyTimer = null;
+      }
+    });
+  }, [redraw]);
 
   useEffect(() => {
     if (!flyTarget) return;
@@ -174,15 +227,41 @@ export default function GlobeView({ selectedIso, onCountryClick, flyTarget, sens
     return () => obs.disconnect();
   }, [setupGlobe]);
 
+  useEffect(() => {
+    stateRef.current.activeIso = selectedIso;
+    redraw();
+    if (selectedIso) flyToIso(selectedIso);
+  }, [selectedIso, redraw, flyToIso]);
+
+  useEffect(() => {
+    if (!showHints && !isExiting) {
+      setIsExiting(true);
+      const timer = setTimeout(() => setIsExiting(false), 400);
+      return () => clearTimeout(timer);
+    }
+    if (showHints) {
+      setIsExiting(false);
+    }
+  }, [showHints, isExiting]);
+
+  const shouldShowHints = showHints || isExiting;
+
   return (
     <div
       ref={areaRef}
       className="relative flex-1 overflow-hidden flex items-center justify-center select-none"
-      style={{ background: 'radial-gradient(ellipse at 40% 40%, #070f1e, #02050a)' }}
+      style={{ background: 'var(--ge-globe-bg)' }}
     >
-      <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(1px 1px at 10% 20%,rgba(255,255,255,.4) 0%,transparent 100%),radial-gradient(1px 1px at 30% 70%,rgba(255,255,255,.3) 0%,transparent 100%),radial-gradient(1px 1px at 55% 15%,rgba(255,255,255,.5) 0%,transparent 100%),radial-gradient(1px 1px at 75% 55%,rgba(255,255,255,.3) 0%,transparent 100%),radial-gradient(1px 1px at 88% 30%,rgba(255,255,255,.4) 0%,transparent 100%),radial-gradient(1px 1px at 20% 85%,rgba(255,255,255,.3) 0%,transparent 100%)' }} />
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          opacity: 'var(--ge-globe-stars-opacity)',
+          backgroundImage:
+            'radial-gradient(1px 1px at 10% 20%,rgba(255,255,255,.4) 0%,transparent 100%),radial-gradient(1px 1px at 30% 70%,rgba(255,255,255,.3) 0%,transparent 100%),radial-gradient(1px 1px at 55% 15%,rgba(255,255,255,.5) 0%,transparent 100%),radial-gradient(1px 1px at 75% 55%,rgba(255,255,255,.3) 0%,transparent 100%),radial-gradient(1px 1px at 88% 30%,rgba(255,255,255,.4) 0%,transparent 100%),radial-gradient(1px 1px at 20% 85%,rgba(255,255,255,.3) 0%,transparent 100%)',
+        }}
+      />
 
-      <svg ref={svgRef} style={{ cursor: 'grab', filter: 'drop-shadow(0 0 50px rgba(56,189,248,0.08))' }} />
+      <svg ref={svgRef} style={{ cursor: 'grab', filter: 'drop-shadow(0 0 50px var(--ge-globe-shadow))' }} />
 
       <div
         ref={tipRef}
@@ -190,11 +269,25 @@ export default function GlobeView({ selectedIso, onCountryClick, flyTarget, sens
         style={{ boxShadow: '0 0 16px rgba(56,189,248,.2)' }}
       />
 
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-5 text-[0.58rem] text-ge-muted tracking-widest pointer-events-none uppercase">
-        <span>🖱️ Drag to Rotate</span>
-        <span>👆 Click to Select</span>
-        <span>🔍 Search to Fly</span>
-      </div>
+      {shouldShowHints && (
+        <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-5 text-[0.58rem] text-ge-muted tracking-widest pointer-events-none uppercase ${isExiting ? 'animate-hint-exit' : 'animate-hint-bounce'}`}>
+          <span>🖱️ Drag to Rotate</span>
+          <span>👆 Click to Select</span>
+          <span>🔍 Search to Fly</span>
+        </div>
+      )}
+
+      {/* Add Explore More button when country is selected */}
+      {selectedIso && onExploreMore && (
+        <button
+          key={`explore-${selectedIso}`}
+          onClick={onExploreMore}
+          className="animate-explore-enter absolute bottom-16 left-1/2 -translate-x-1/2 bg-ge-surface border border-ge-accent text-ge-accent px-6 py-2.5 rounded-lg font-display font-semibold text-[0.7rem] tracking-wide uppercase hover:bg-ge-surface2 hover:border-ge-accent/80 transition-all shadow-lg hover:shadow-xl pointer-events-auto z-10"
+          style={{ boxShadow: '0 0 20px rgba(56,189,248,0.2)' }}
+        >
+          Explore More
+        </button>
+      )}
     </div>
   );
 }
