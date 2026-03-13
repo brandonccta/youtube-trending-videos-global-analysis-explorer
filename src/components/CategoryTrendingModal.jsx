@@ -18,6 +18,8 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const spinnerDelayRef = useRef(null);
+  const [showSpinner, setShowSpinner] = useState(false);
   const [maxSelected, setMaxSelected] = useState(3);
   // Keep order so we can evict oldest when exceeding maxSelected
   const [selectedKeys, setSelectedKeys] = useState([]); // ["<category>|<dateStr>", ...]
@@ -101,15 +103,42 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
     
     setLoading(true);
     setError(null);
+    setShowSpinner(false);
+
+    if (spinnerDelayRef.current) {
+      clearTimeout(spinnerDelayRef.current);
+    }
+    spinnerDelayRef.current = setTimeout(() => {
+      setShowSpinner(true);
+    }, 180);
+
     fetchCategoryTrendingOverTime(countryName)
       .then(result => {
         setData(result);
         setLoading(false);
+        setShowSpinner(false);
+        if (spinnerDelayRef.current) {
+          clearTimeout(spinnerDelayRef.current);
+          spinnerDelayRef.current = null;
+        }
       })
       .catch(err => {
         setError(err.message);
         setLoading(false);
+        setShowSpinner(false);
+        if (spinnerDelayRef.current) {
+          clearTimeout(spinnerDelayRef.current);
+          spinnerDelayRef.current = null;
+        }
       });
+    
+    return () => {
+      if (spinnerDelayRef.current) {
+        clearTimeout(spinnerDelayRef.current);
+        spinnerDelayRef.current = null;
+      }
+      setShowSpinner(false);
+    };
   }, [isOpen, countryName]);
 
   // Reset selections when country changes or modal reopens
@@ -365,22 +394,22 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm ge-modal-backdrop"
       onClick={onClose}
     >
       <div 
-        className="bg-ge-panel border border-ge-border rounded-lg shadow-2xl p-6 max-w-4xl w-full mx-4 relative"
+        className="bg-ge-panel border border-ge-border rounded-lg shadow-2xl p-6 max-w-4xl w-full mx-4 relative ge-modal-panel"
         onClick={e => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-7 text-ge-muted hover:text-ge-text transition-colors text-2xl leading-none"
+          className="absolute top-3 right-3 z-50 inline-flex items-center justify-center w-12 h-12 rounded-full text-ge-muted hover:text-ge-text transition-colors text-2xl leading-none pointer-events-auto"
           aria-label="Close"
         >
           ×
         </button>
 
-        {loading && (
+        {showSpinner && loading && (
           <div className="flex flex-col items-center justify-center py-20 text-ge-muted">
             <div className="w-8 h-8 border-2 border-ge-border border-t-ge-accent rounded-full animate-spin-slow mb-4" />
             <span className="text-[0.68rem]">Loading chart data...</span>

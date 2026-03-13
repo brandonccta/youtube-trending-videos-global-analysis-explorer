@@ -1,4 +1,4 @@
-# 🌍 Globe Explorer
+# Globe Explorer
 
 Interactive 3D globe that queries your MySQL database when a country is selected.
 
@@ -38,22 +38,6 @@ globe-explorer/
 ├── package.json
 └── vite.config.js
 ```
-
----
-
-## Quick Start (Mock Data — no backend needed)
-
-```bash
-# 1. Install dependencies
-npm install
-
-# 2. Run the dev server
-npm run dev
-
-# 3. Open http://localhost:3000
-```
-
-The app runs with built-in mock data by default — no database required.
 
 ---
 
@@ -114,6 +98,12 @@ SSH_TARGET_HOST=class-148.cs.ucr.edu
 SSH_TARGET_PORT=22
 SSH_TARGET_USER=cs179g
 
+# Optional: authenticate with key files (helpful on Windows / when not using ssh-agent)
+# SSH_JUMP_PRIVATE_KEY=C:\Users\you\.ssh\id_rsa
+# SSH_JUMP_PASSPHRASE=your_key_passphrase
+# SSH_TARGET_PRIVATE_KEY=C:\Users\you\.ssh\id_rsa
+# SSH_TARGET_PASSPHRASE=your_key_passphrase
+
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_USER=root
@@ -131,10 +121,11 @@ cp .env.example .env
 Edit `.env`:
 
 ```
-VITE_API_BASE=http://localhost:4000
-VITE_KEY_COLUMN=iso_code
-VITE_USE_MOCK=false
+VITE_API_BASE=
 ```
+
+> `VITE_API_BASE` can be left empty because Vite is configured to proxy `/api` → `http://localhost:4000` in `vite.config.mjs`.
+> If you prefer not to use the proxy, set `VITE_API_BASE=http://localhost:4000`.
 
 ### Step 5 — Start both servers
 

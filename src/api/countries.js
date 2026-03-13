@@ -7,7 +7,9 @@ const API_BASE = import.meta.env.VITE_API_BASE ?? '';
  */
 export async function fetchTopChannels(countryName) {
   if (!countryName) return [];
-  const url = `${API_BASE}/api/tables/top_channels_per_country?video_trending_country=${encodeURIComponent(countryName)}&limit=10`;
+  const url = `${API_BASE}/api/country/top_channels?country=${encodeURIComponent(
+    countryName,
+  )}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
   return res.json();
@@ -20,7 +22,9 @@ export async function fetchTopChannels(countryName) {
  */
 export async function fetchTopCategories(countryName) {
   if (!countryName) return [];
-  const url = `${API_BASE}/api/tables/top_categories_per_country?video_trending_country=${encodeURIComponent(countryName)}&limit=10`;
+  const url = `${API_BASE}/api/country/top_categories?country=${encodeURIComponent(
+    countryName,
+  )}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
   return res.json();
