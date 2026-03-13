@@ -214,7 +214,58 @@ app.get("/api/tables/:table/schema", async (req, res) => {
   }
 });
 
-// Query a table (supports ?limit=100&offset=0 and arbitrary WHERE filters)
+// Country-specific helpers (used by the React app)
+app.get("/api/country/top_channels", async (req, res) => {
+  try {
+    const { country } = req.query;
+    if (!country) {
+      return res.status(400).json({ error: 'Missing "country" query parameter' });
+    }
+
+    await assertTable("top_channels_per_country");
+
+    const sql = `
+      SELECT *
+      FROM \`top_channels_per_country\`
+      WHERE \`video_trending_country\` = ?
+      ORDER BY \`trending_appearances\` DESC
+      LIMIT 10
+    `;
+
+    const [rows] = await pool.query(sql, [country]);
+    res.json(rows);
+  } catch (err) {
+    console.error("[API] /api/country/top_channels:", err.message);
+    res.status(err.status ?? 500).json({ error: err.message });
+  }
+});
+
+app.get("/api/country/top_categories", async (req, res) => {
+  try {
+    const { country } = req.query;
+    if (!country) {
+      return res.status(400).json({ error: 'Missing "country" query parameter' });
+    }
+
+    await assertTable("top_categories_per_country");
+
+    const sql = `
+      SELECT *
+      FROM \`top_categories_per_country\`
+      WHERE \`video_trending_country\` = ?
+      ORDER BY \`trending_appearances\` DESC
+      LIMIT 5
+    `;
+
+    const [rows] = await pool.query(sql, [country]);
+    res.json(rows);
+  } catch (err) {
+    console.error("[API] /api/country/top_categories:", err.message);
+    res.status(err.status ?? 500).json({ error: err.message });
+  }
+});
+
+// Generic table query (supports ?limit=100&offset=0 and simple equality filters)
 app.get("/api/tables/:table", async (req, res) => {
   try {
     await assertTable(req.params.table);

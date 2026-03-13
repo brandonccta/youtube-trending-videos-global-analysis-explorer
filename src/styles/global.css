@@ -82,6 +82,25 @@ html, body, #root {
   font-family: 'JetBrains Mono', monospace;
 }
 
+/* Smooth theme transitions */
+*,
+*::before,
+*::after {
+  transition:
+    background-color 300ms ease-out,
+    color 300ms ease-out,
+    border-color 300ms ease-out,
+    box-shadow 300ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+  }
+}
+
 ::-webkit-scrollbar       { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #1a2a42; border-radius: 2px; }
@@ -116,11 +135,39 @@ html, body, #root {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-.animate-explore-enter { animation: exploreEnter 0.35s ease-out both; }
+/* Longer, symmetric timing for Explore More enter/exit.
+   For enter, explicitly start hidden and below so the delay period
+   doesn't show a "static" button before the animation begins. */
+.animate-explore-enter {
+  opacity: 0;
+  transform: translateY(22px);
+  /* Remove delay so the button animates immediately when it appears. */
+  animation: exploreEnter 0.5s ease-out both;
+}
 
 @keyframes exploreExit {
   from { opacity: 1; transform: translateY(0); }
   to   { opacity: 0; transform: translateY(22px); }
 }
 
-.animate-explore-exit { animation: exploreExit 0.35s ease-out forwards; }
+.animate-explore-exit {
+  animation: exploreExit 0.5s ease-out 0.25s forwards;
+}
+
+@keyframes geModalBackdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes geModalPanelIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.ge-modal-backdrop {
+  animation: geModalBackdropIn 0.38s ease-out both;
+}
+
+.ge-modal-panel {
+  animation: geModalPanelIn 0.44s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
