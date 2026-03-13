@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { THEME_MODE, getSystemTimeZone, readStoredThemeMode, resolveThemeFromTime, storeThemeMode } from './theme';
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { THEME_MODE, getSystemTimeZone, resolveThemeFromTime } from './theme';
 
 const ThemeContext = createContext(null);
 
@@ -36,7 +36,8 @@ function useAutoThemeTimer({ enabled, timeZone, onTick }) {
 }
 
 export function ThemeProvider({ children }) {
-  const [mode, setMode] = useState(() => readStoredThemeMode()); // 'auto' | 'day' | 'night'
+  // Always start in AUTO on each page load; do not persist mode across reloads.
+  const [mode, setMode] = useState(THEME_MODE.AUTO); // 'auto' | 'day' | 'night'
   const [timeZone] = useState(() => getSystemTimeZone());
   const [resolvedTheme, setResolvedTheme] = useState(() => {
     return mode === THEME_MODE.AUTO ? resolveThemeFromTime({ timeZone }) : mode;
@@ -55,15 +56,11 @@ export function ThemeProvider({ children }) {
     onTick: () => setResolvedTheme(resolveThemeFromTime({ timeZone })),
   });
 
-  // Apply to DOM
-  useEffect(() => {
+  // Apply to DOM. Use layout effect so the correct theme is set
+  // before the browser paints, avoiding a dark→light flicker.
+  useLayoutEffect(() => {
     applyResolvedThemeToDom(resolvedTheme);
   }, [resolvedTheme]);
-
-  // Persist mode
-  useEffect(() => {
-    storeThemeMode(mode);
-  }, [mode]);
 
   const value = useMemo(() => ({
     mode,

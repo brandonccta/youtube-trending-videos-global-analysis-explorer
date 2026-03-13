@@ -19,6 +19,7 @@ export default function GlobeView({
   showHints = true,
   onFirstInteraction,
   onExploreMore,
+  showExploreMore = false,
 }) {
   const areaRef  = useRef(null);
   const svgRef   = useRef(null);
@@ -26,9 +27,27 @@ export default function GlobeView({
   const [isExiting, setIsExiting] = useState(false);
   const stateRef = useRef({
     rotation: [0, -20, 0], isDragging: false, flyTimer: null,
+    autoSpinTimer: null,
+    hasInteracted: false,
+    hoverIso: null,
     projection: null, path: null, radius: 0, activeIso: null,
     centroids: {},
   });
+
+  const stopAutoSpin = useCallback(() => {
+    const s = stateRef.current;
+    if (s.autoSpinTimer) {
+      s.autoSpinTimer.stop();
+      s.autoSpinTimer = null;
+    }
+  }, []);
+
+  const noteFirstInteraction = useCallback(() => {
+    const s = stateRef.current;
+    if (!s.hasInteracted) s.hasInteracted = true;
+    stopAutoSpin();
+    onFirstInteraction?.();
+  }, [onFirstInteraction, stopAutoSpin]);
 
   const redraw = useCallback(() => {
     const s = stateRef.current;
@@ -39,7 +58,13 @@ export default function GlobeView({
     svg.select('.ge-grat').attr('d', s.path);
     svg.selectAll('.ge-country')
       .attr('d', s.path)
-      .attr('fill', d => NUM_TO_ISO[d.id] === s.activeIso ? 'var(--ge-globe-land-active)' : 'var(--ge-globe-land)');
+      .attr('fill', d => {
+        const iso = NUM_TO_ISO[d.id];
+        if (!iso) return 'var(--ge-globe-land)';
+        if (iso === s.activeIso) return 'var(--ge-globe-land-active)';
+        if (iso === s.hoverIso) return 'var(--ge-globe-land-hover)';
+        return 'var(--ge-globe-land)';
+      });
   }, []);
 
   const setupGlobe = useCallback(() => {
@@ -94,7 +119,7 @@ export default function GlobeView({
     // D3 drag on the SVG for rotation
     svg.call(d3.drag()
       .on('start', event => {
-        onFirstInteraction?.();
+        noteFirstInteraction();
         if (s.flyTimer) { s.flyTimer.stop(); s.flyTimer = null; }
         s.isDragging = false;
         s._x0 = event.x; s._y0 = event.y;
@@ -138,7 +163,8 @@ export default function GlobeView({
           const iso  = NUM_TO_ISO[d.id];
           const name = NUM_TO_NAME[d.id];
           if (!iso || !name) return;
-          d3.select(this).attr('fill', iso === s.activeIso ? 'var(--ge-globe-land-active)' : 'var(--ge-globe-land-hover)');
+          s.hoverIso = iso;
+          redraw();
           const tip = tipRef.current;
           if (tip) {
             tip.style.opacity = '1';
@@ -157,7 +183,8 @@ export default function GlobeView({
         })
         .on('pointerout', function(event, d) {
           const iso = NUM_TO_ISO[d.id];
-          d3.select(this).attr('fill', iso === s.activeIso ? 'var(--ge-globe-land-active)' : 'var(--ge-globe-land)');
+          if (iso && s.hoverIso === iso) s.hoverIso = null;
+          redraw();
           const tip = tipRef.current;
           if (tip) tip.style.opacity = '0';
         })
@@ -166,14 +193,44 @@ export default function GlobeView({
           const iso  = NUM_TO_ISO[d.id];
           const name = NUM_TO_NAME[d.id];
           if (!iso || !name) return;
-          onFirstInteraction?.();
+          // Click implies intent; clear hover so it can't "stick" mid-fly.
+          s.hoverIso = null;
+          noteFirstInteraction();
           onCountryClick(iso, name);
           flyToIso(iso);
         });
     });
-  }, [sensitivity, onCountryClick, onFirstInteraction, redraw]);
+  }, [sensitivity, onCountryClick, noteFirstInteraction, redraw]);
 
   useEffect(() => { setupGlobe(); }, [setupGlobe]);
+
+  useEffect(() => {
+    const s = stateRef.current;
+    // Start a gentle idle spin on first load.
+    // NOTE: In React 18 dev + StrictMode, effects run twice (mount→cleanup→mount).
+    // Don't "latch" a started flag across cleanup; instead, only avoid starting
+    // when a timer is already running or the user has interacted.
+    if (s.hasInteracted || s.autoSpinTimer) return;
+
+    // Degrees per millisecond. 0.001 => ~1 deg/sec at steady 60fps.
+    const SPEED_DEG_PER_MS = 0.01;
+    let lastElapsed = null;
+
+    s.autoSpinTimer = d3.timer((elapsed) => {
+      // Permanently stop after any user interaction.
+      if (s.hasInteracted) { stopAutoSpin(); return; }
+      // Don't fight dragging or fly-to animations.
+      if (s.isDragging || s.flyTimer) { lastElapsed = elapsed; return; }
+      if (lastElapsed == null) { lastElapsed = elapsed; return; }
+      const dt = elapsed - lastElapsed;
+      lastElapsed = elapsed;
+      // Increase lambda to rotate left-to-right.
+      s.rotation = [s.rotation[0] + dt * SPEED_DEG_PER_MS, s.rotation[1], s.rotation[2]];
+      redraw();
+    });
+
+    return () => stopAutoSpin();
+  }, [redraw, stopAutoSpin]);
 
   useEffect(() => {
     stateRef.current.activeIso = selectedIso;
@@ -207,6 +264,8 @@ export default function GlobeView({
   useEffect(() => {
     if (!flyTarget) return;
     const s = stateRef.current;
+    // A search-triggered fly implies interaction; stop the idle spin.
+    noteFirstInteraction();
     if (s.flyTimer) s.flyTimer.stop();
     const start  = [...s.rotation];
     const end    = [-flyTarget.lon, -flyTarget.lat, 0];
@@ -219,7 +278,7 @@ export default function GlobeView({
       redraw();
       if (t >= 1) { s.flyTimer.stop(); s.flyTimer = null; onFlyDone?.(); }
     });
-  }, [flyTarget, redraw, onFlyDone]);
+  }, [flyTarget, redraw, onFlyDone, noteFirstInteraction]);
 
   useEffect(() => {
     const obs = new ResizeObserver(() => setupGlobe());
@@ -270,23 +329,30 @@ export default function GlobeView({
       />
 
       {shouldShowHints && (
-        <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-5 text-[0.58rem] text-ge-muted tracking-widest pointer-events-none uppercase ${isExiting ? 'animate-hint-exit' : 'animate-hint-bounce'}`}>
+        <div
+          className={`absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-7 text-[0.85rem] text-ge-muted tracking-widest pointer-events-none uppercase font-semibold ${isExiting ? 'animate-hint-exit' : 'animate-hint-bounce'}`}
+        >
           <span>🖱️ Drag to Rotate</span>
           <span>👆 Click to Select</span>
           <span>🔍 Search to Fly</span>
         </div>
       )}
 
-      {/* Add Explore More button when country is selected */}
-      {selectedIso && onExploreMore && (
-        <button
-          key={`explore-${selectedIso}`}
-          onClick={onExploreMore}
-          className="animate-explore-enter absolute bottom-16 left-1/2 -translate-x-1/2 bg-ge-surface border border-ge-accent text-ge-accent px-6 py-2.5 rounded-lg font-display font-semibold text-[0.7rem] tracking-wide uppercase hover:bg-ge-surface2 hover:border-ge-accent/80 transition-all shadow-lg hover:shadow-xl pointer-events-auto z-10"
-          style={{ boxShadow: '0 0 20px rgba(56,189,248,0.2)' }}
-        >
-          Explore More
-        </button>
+      {/* Add Explore More button when country is selected and has data.
+          We only animate the "enter" state to avoid any flicker caused by
+          brief hide/show cycles while data is loading. */}
+      {selectedIso && onExploreMore && showExploreMore && (
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+          <button
+            onClick={onExploreMore}
+            className={`bg-ge-surface border border-ge-accent text-ge-accent px-7 py-3 rounded-xl font-display font-semibold text-[1.05rem] tracking-wide uppercase shadow-xl hover:shadow-2xl pointer-events-auto ${
+              'animate-explore-enter hover:bg-ge-surface2 hover:border-ge-accent/80'
+            }`}
+            style={{ boxShadow: '0 0 28px rgba(56,189,248,0.35)' }}
+          >
+            Explore More
+          </button>
+        </div>
       )}
     </div>
   );

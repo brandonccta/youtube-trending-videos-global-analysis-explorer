@@ -41,6 +41,8 @@ export default function App() {
     setShowModal(true);
   }, []);
 
+  const hasCountryData = !loading && !error && (channels.length > 0 || categories.length > 0);
+
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden bg-ge-bg text-ge-text font-mono">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-2 px-6 py-2.5 bg-ge-panel border-b border-ge-border z-20 shrink-0">
@@ -83,6 +85,7 @@ export default function App() {
           showHints={showHints}
           onFirstInteraction={dismissHints}
           onExploreMore={handleExploreMore}
+          showExploreMore={!!selectedIso && hasCountryData}
         />
         <Sidebar selectedIso={selectedIso} selectedName={selectedName} channels={channels} categories={categories} loading={loading} error={error} />
       </div>

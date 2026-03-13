@@ -39,7 +39,7 @@ export default function Sidebar({ selectedIso, selectedName, channels, categorie
   // Explicitly cap projections to the Top 10 results (API *should* already do this,
   // but keeping it here prevents accidental "Top 9" regressions if upstream changes).
   const topChannels = useMemo(() => channels.slice(0, 10), [channels]);
-  const topCategories = useMemo(() => categories.slice(0, 10), [categories]);
+  const topCategories = useMemo(() => categories.slice(0, 5), [categories]);
 
   const hasData = activeTab === 'channels' ? topChannels.length > 0 : topCategories.length > 0;
 
