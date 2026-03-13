@@ -25,7 +25,6 @@ export default function GlobeView({
   const svgRef   = useRef(null);
   const tipRef   = useRef(null);
   const [isExiting, setIsExiting] = useState(false);
-  const [exploreIsExiting, setExploreIsExiting] = useState(false);
   const stateRef = useRef({
     rotation: [0, -20, 0], isDragging: false, flyTimer: null,
     autoSpinTimer: null,
@@ -306,19 +305,6 @@ export default function GlobeView({
 
   const shouldShowHints = showHints || isExiting;
 
-  useEffect(() => {
-    if (!showExploreMore && !exploreIsExiting) {
-      setExploreIsExiting(true);
-      const t = setTimeout(() => setExploreIsExiting(false), 350);
-      return () => clearTimeout(t);
-    }
-    if (showExploreMore) {
-      setExploreIsExiting(false);
-    }
-  }, [showExploreMore, exploreIsExiting]);
-
-  const shouldShowExplore = showExploreMore || exploreIsExiting;
-
   return (
     <div
       ref={areaRef}
@@ -343,26 +329,30 @@ export default function GlobeView({
       />
 
       {shouldShowHints && (
-        <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-5 text-[0.58rem] text-ge-muted tracking-widest pointer-events-none uppercase ${isExiting ? 'animate-hint-exit' : 'animate-hint-bounce'}`}>
+        <div
+          className={`absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-7 text-[0.85rem] text-ge-muted tracking-widest pointer-events-none uppercase font-semibold ${isExiting ? 'animate-hint-exit' : 'animate-hint-bounce'}`}
+        >
           <span>🖱️ Drag to Rotate</span>
           <span>👆 Click to Select</span>
           <span>🔍 Search to Fly</span>
         </div>
       )}
 
-      {/* Add Explore More button when country is selected */}
-      {selectedIso && onExploreMore && shouldShowExplore && (
-        <button
-          onClick={onExploreMore}
-          className={`absolute bottom-16 left-1/2 -translate-x-1/2 bg-ge-surface border border-ge-accent text-ge-accent px-6 py-2.5 rounded-lg font-display font-semibold text-[0.7rem] tracking-wide uppercase shadow-lg hover:shadow-xl z-10 transition-[opacity,transform] duration-300 ease-out ${
-            showExploreMore
-              ? 'opacity-100 translate-y-0 pointer-events-auto hover:bg-ge-surface2 hover:border-ge-accent/80'
-              : 'opacity-0 translate-y-6 pointer-events-none'
-          }`}
-          style={{ boxShadow: '0 0 20px rgba(56,189,248,0.2)' }}
-        >
-          Explore More
-        </button>
+      {/* Add Explore More button when country is selected and has data.
+          We only animate the "enter" state to avoid any flicker caused by
+          brief hide/show cycles while data is loading. */}
+      {selectedIso && onExploreMore && showExploreMore && (
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+          <button
+            onClick={onExploreMore}
+            className={`bg-ge-surface border border-ge-accent text-ge-accent px-7 py-3 rounded-xl font-display font-semibold text-[1.05rem] tracking-wide uppercase shadow-xl hover:shadow-2xl pointer-events-auto ${
+              'animate-explore-enter hover:bg-ge-surface2 hover:border-ge-accent/80'
+            }`}
+            style={{ boxShadow: '0 0 28px rgba(56,189,248,0.35)' }}
+          >
+            Explore More
+          </button>
+        </div>
       )}
     </div>
   );
