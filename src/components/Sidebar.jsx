@@ -114,14 +114,28 @@ export default function Sidebar({ selectedIso, selectedName, channels, categorie
     }
   }, [now, timeZone]);
 
+  const flagCode = useMemo(() => {
+    if (!selectedCountry || !selectedCountry.alpha2) return null;
+    return selectedCountry.alpha2.toLowerCase();
+  }, [selectedCountry]);
+
   return (
     <aside className="w-80 shrink-0 bg-ge-panel border-l border-ge-border flex flex-col overflow-hidden">
 
       {/* Header */}
       <div className={`px-6 pt-5 pb-4 border-b border-ge-border relative overflow-hidden shrink-0 ${hasSelection ? 'after:absolute after:top-0 after:left-0 after:right-0 after:h-0.5 after:bg-linear-to-r after:from-transparent after:via-ge-accent after:to-transparent' : ''}`}>
         <div className="text-[0.56rem] tracking-[0.16em] uppercase text-ge-muted mb-2">Selected Country</div>
-        <div className="font-display font-black text-[1.55rem] text-ge-text leading-tight tracking-tight min-h-[1.8rem]">
-          {selectedName ?? '—'}
+        <div className="flex items-center justify-between gap-2">
+          <div className="font-display font-black text-[1.55rem] text-ge-text leading-tight tracking-tight min-h-[1.8rem]">
+            {selectedName ?? '—'}
+          </div>
+          {flagCode && (
+            <span
+              className={`fi fi-${flagCode} fi-rounded align-middle`}
+              data-testid="country-flag"
+              style={{ fontSize: '1.4rem', lineHeight: 1 }}
+            />
+          )}
         </div>
         {hasSelection && (
           <div className="mt-2 text-[0.62rem] text-ge-muted">

@@ -45,9 +45,16 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden bg-ge-bg text-ge-text font-mono">
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 px-6 py-2.5 bg-ge-panel border-b border-ge-border z-20 shrink-0">
-        <div className="font-display font-black text-lg tracking-tight text-ge-accent shrink-0 select-none">
-          GLOBE<span className="text-ge-text">EXPLORER</span>
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 pl-3 pr-7 py-2.5 bg-ge-panel border-b border-ge-border z-20 shrink-0">
+        <div className="flex items-center gap-2.5 font-display font-black text-lg tracking-tight text-ge-accent shrink-0 select-none">
+          <img
+            src="/favicon.png"
+            alt="Globe Explorer logo"
+            className="w-9 h-9 rounded-full object-cover drop-shadow-[0_0_6px_var(--ge-logo-shadow)] bg-transparent"
+          />
+          <span>
+            GLOBE<span className="text-ge-text">EXPLORER</span>
+          </span>
         </div>
 
         <div className="flex items-center gap-4 flex-1 min-w-[360px]">
