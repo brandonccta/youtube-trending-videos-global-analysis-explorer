@@ -9,11 +9,11 @@
     },
     {
       "source": "/(.*)",
-      "destination": "/$1"
+      "destination": "/index.html"
     }
   ],
   "functions": {
-    "api/**/*.js": {
+    "api/[...path].js": {
       "maxDuration": 30
     }
   }
