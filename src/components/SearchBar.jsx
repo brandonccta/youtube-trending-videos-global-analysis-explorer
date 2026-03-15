@@ -14,14 +14,21 @@ export default function SearchBar({ onSelect, onFocus, onFirstInteraction }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const handleInput = e => {
+  const handleInput = useCallback((e) => {
     onFirstInteraction?.();
     const q = e.target.value;
-    setQuery(q); setFocusIdx(-1);
-    if (!q.trim()) { setResults([]); setOpen(false); return; }
-    const m = COUNTRIES.filter(c => c.name.toLowerCase().includes(q.toLowerCase())).slice(0, 8);
-    setResults(m); setOpen(m.length > 0);
-  };
+    setQuery(q); 
+    setFocusIdx(-1);
+    if (!q.trim()) { 
+      setResults([]); 
+      setOpen(false); 
+      return; 
+    }
+    const lowerQ = q.toLowerCase();
+    const m = COUNTRIES.filter(c => c.name.toLowerCase().includes(lowerQ)).slice(0, 8);
+    setResults(m); 
+    setOpen(m.length > 0);
+  }, [onFirstInteraction]);
 
   const handleFocus = useCallback(() => {
     // Clear current selection + input so the user can immediately type a new country.
@@ -41,20 +48,29 @@ export default function SearchBar({ onSelect, onFocus, onFirstInteraction }) {
     onSelect(c);
   }, [onFirstInteraction, onSelect]);
 
-  const handleKey = e => {
+  const handleKey = useCallback((e) => {
     if (!open) return;
-    if (e.key === 'ArrowDown') { e.preventDefault(); setFocusIdx(i => Math.min(i+1, results.length-1)); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setFocusIdx(i => Math.max(i-1, 0)); }
-    else if (e.key === 'Enter' && focusIdx >= 0) pick(results[focusIdx]);
-    else if (e.key === 'Escape') setOpen(false);
-  };
+    if (e.key === 'ArrowDown') { 
+      e.preventDefault(); 
+      setFocusIdx(i => Math.min(i+1, results.length-1)); 
+    } else if (e.key === 'ArrowUp') { 
+      e.preventDefault(); 
+      setFocusIdx(i => Math.max(i-1, 0)); 
+    } else if (e.key === 'Enter' && focusIdx >= 0) { 
+      pick(results[focusIdx]); 
+    } else if (e.key === 'Escape') { 
+      setOpen(false); 
+    }
+  }, [open, results, focusIdx, pick]);
 
-  const hl = (text, q) => {
+  const hl = useCallback((text, q) => {
     if (!q) return text;
-    const i = text.toLowerCase().indexOf(q.toLowerCase());
+    const lowerText = text.toLowerCase();
+    const lowerQ = q.toLowerCase();
+    const i = lowerText.indexOf(lowerQ);
     if (i < 0) return text;
     return <>{text.slice(0,i)}<strong className="text-ge-accent font-medium">{text.slice(i, i+q.length)}</strong>{text.slice(i+q.length)}</>;
-  };
+  }, []);
 
   return (
     <div className="relative w-full max-w-md" ref={wrapRef}>
