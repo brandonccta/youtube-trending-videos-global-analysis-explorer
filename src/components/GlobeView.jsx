@@ -75,12 +75,12 @@ export default function GlobeView({
     
     let end;
     if (typeof target === 'string') {
-      // ISO-based fly
+      // iso-based fly
       if (!s.centroids[target]) return;
       const { lon, lat } = s.centroids[target];
       end = [-lon, -lat, 0];
     } else {
-      // Coordinate-based fly
+      // coordinate-based fly
       end = [-target.lon, -target.lat, 0];
     }
   
@@ -103,17 +103,13 @@ export default function GlobeView({
     });
   }, [redraw]);
 
-  const flyToIso = useCallback((iso) => {
-    flyTo(iso);
-  }, [flyTo]);
-
   const setupGlobe = useCallback(() => {
     const s = stateRef.current;
     const area = areaRef.current, svgEl = svgRef.current;
     if (!area || !svgEl) return;
     const w = area.clientWidth, h = area.clientHeight;
-    // Reserve space at the bottom for the hint row so it doesn't overlap the globe.
-    // This keeps the globe visually centered within the remaining vertical space.
+    // reserve space at the bottom for the hint row so it doesn't overlap the globe.
+    // this keeps the globe visually centered within the remaining vertical space.
     const footerReservePx = 35;
     const hEff = Math.max(0, h - footerReservePx);
 
@@ -156,7 +152,7 @@ export default function GlobeView({
     svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',s.radius)
       .attr('fill','url(#ge-sg)').attr('pointer-events','none');
 
-    // D3 drag on the SVG for rotation
+    // d3 drag on the svg for rotation
     svg.call(d3.drag()
       .on('start', event => {
         noteFirstInteraction();
@@ -197,7 +193,7 @@ export default function GlobeView({
         .attr('stroke','var(--ge-globe-stroke)')
         .attr('stroke-width', .5)
         .style('cursor','pointer')
-        // ── Use pointer events — D3 drag does not intercept these ──
+        // ── use pointer events — d3 drag does not intercept these ──
         .on('pointerover', function(event, d) {
           if (s.isDragging) return;
           const iso  = NUM_TO_ISO[d.id];
@@ -233,38 +229,38 @@ export default function GlobeView({
           const iso  = NUM_TO_ISO[d.id];
           const name = NUM_TO_NAME[d.id];
           if (!iso || !name) return;
-          // Click implies intent; clear hover so it can't "stick" mid-fly.
+          // click implies intent; clear hover so it can't "stick" mid-fly.
           s.hoverIso = null;
           noteFirstInteraction();
           onCountryClick(iso, name);
-          flyToIso(iso);
+          flyTo(iso);
         });
     });
-  }, [sensitivity, onCountryClick, noteFirstInteraction, redraw, flyToIso]);
+  }, [sensitivity, onCountryClick, noteFirstInteraction, redraw, flyTo]);
 
   useEffect(() => { setupGlobe(); }, [setupGlobe]);
 
   useEffect(() => {
     const s = stateRef.current;
-    // Start a gentle idle spin on first load.
+    // start a gentle idle spin on first load.
     // NOTE: In React 18 dev + StrictMode, effects run twice (mount→cleanup→mount).
-    // Don't "latch" a started flag across cleanup; instead, only avoid starting
+    // don't "latch" a started flag across cleanup; instead, only avoid starting
     // when a timer is already running or the user has interacted.
     if (s.hasInteracted || s.autoSpinTimer) return;
 
-    // Degrees per millisecond. 0.001 => ~1 deg/sec at steady 60fps.
+    // degrees per millisecond. 0.001 => ~1 deg/sec at steady 60fps.
     const SPEED_DEG_PER_MS = 0.01;
     let lastElapsed = null;
 
     s.autoSpinTimer = d3.timer((elapsed) => {
-      // Permanently stop after any user interaction.
+      // permanently stop after any user interaction.
       if (s.hasInteracted) { stopAutoSpin(); return; }
-      // Don't fight dragging or fly-to animations.
+      // don't fight dragging or fly-to animations.
       if (s.isDragging || s.flyTimer) { lastElapsed = elapsed; return; }
       if (lastElapsed == null) { lastElapsed = elapsed; return; }
       const dt = elapsed - lastElapsed;
       lastElapsed = elapsed;
-      // Increase lambda to rotate left-to-right.
+      // increase lambda to rotate left-to-right.
       s.rotation = [s.rotation[0] + dt * SPEED_DEG_PER_MS, s.rotation[1], s.rotation[2]];
       redraw();
     });
@@ -274,7 +270,7 @@ export default function GlobeView({
 
   useEffect(() => {
     if (!flyTarget) return;
-    // A search-triggered fly implies interaction; stop the idle spin.
+    // a search-triggered fly implies interaction; stop the idle spin.
     noteFirstInteraction();
     flyTo(flyTarget, onFlyDone);
   }, [flyTarget, flyTo, onFlyDone, noteFirstInteraction]);
@@ -289,8 +285,8 @@ export default function GlobeView({
   useEffect(() => {
     stateRef.current.activeIso = selectedIso;
     redraw();
-    if (selectedIso) flyToIso(selectedIso);
-  }, [selectedIso, redraw, flyToIso]);
+    if (selectedIso) flyTo(selectedIso);
+  }, [selectedIso, redraw, flyTo]);
 
   useEffect(() => {
     if (!showHints && !isExiting) {
@@ -308,7 +304,7 @@ export default function GlobeView({
   return (
     <div
       ref={areaRef}
-      className="relative flex-1 overflow-hidden flex items-center justify-center select-none"
+      className="ge-globe relative flex-1 overflow-hidden flex items-center justify-center select-none"
       style={{ background: 'var(--ge-globe-bg)' }}
     >
       <div
@@ -330,22 +326,31 @@ export default function GlobeView({
 
       {shouldShowHints && (
         <div
-          className={`absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-7 text-[0.85rem] text-ge-muted tracking-widest pointer-events-none uppercase font-semibold ${isExiting ? 'animate-hint-exit' : 'animate-hint-bounce'}`}
+          className={`ge-globe-hints absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-7 text-[0.85rem] text-ge-muted tracking-widest pointer-events-none uppercase font-semibold ${isExiting ? 'animate-hint-exit' : 'animate-hint-bounce'}`}
         >
-          <span>🖱️ Drag to Rotate</span>
-          <span>👆 Click to Select</span>
-          <span>🔍 Search to Fly</span>
+          <span className="ge-hint-item">
+            <span className="ge-hint-emoji">🖱️</span>
+            <span>Drag to Rotate</span>
+          </span>
+          <span className="ge-hint-item">
+            <span className="ge-hint-emoji">👆</span>
+            <span>Click to Select</span>
+          </span>
+          <span className="ge-hint-item">
+            <span className="ge-hint-emoji">🔍</span>
+            <span>Search to Fly</span>
+          </span>
         </div>
       )}
 
       {/* Add Explore More button when country is selected and has data.
-          We only animate the "enter" state to avoid any flicker caused by
+          we only animate the "enter" state to avoid any flicker caused by
           brief hide/show cycles while data is loading. */}
       {selectedIso && onExploreMore && showExploreMore && (
-        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-10 pointer-events-none globe-explore-wrapper">
           <button
             onClick={onExploreMore}
-            className={`bg-ge-surface border border-ge-accent text-ge-accent px-7 py-3 rounded-xl font-display font-semibold text-[1.05rem] tracking-wide uppercase shadow-xl hover:shadow-2xl pointer-events-auto ${
+            className={`bg-ge-surface border border-ge-accent text-ge-accent px-7 py-3 rounded-xl font-display font-semibold text-[1.05rem] tracking-wide uppercase shadow-xl hover:shadow-2xl pointer-events-auto globe-explore-button ${
               'animate-explore-enter hover:bg-ge-surface2 hover:border-ge-accent/80'
             }`}
             style={{ boxShadow: '0 0 28px rgba(56,189,248,0.35)' }}

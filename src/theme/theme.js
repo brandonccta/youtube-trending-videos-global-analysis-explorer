@@ -14,10 +14,10 @@ export function getSystemTimeZone() {
 
 /**
  * Daytime heuristic:
- * - Day: 06:00–17:59
- * - Night: 18:00–05:59
+ * - day: 06:00–17:59
+ * - night: 18:00–05:59
  *
- * You can later swap this for sun-rise/set by lat/lng if you want.
+ * you can later swap this for sun-rise/set by lat/lng if you want.
  */
 export function resolveThemeFromTime({ now = new Date(), timeZone }) {
   const tz = timeZone || getSystemTimeZone();
@@ -32,22 +32,3 @@ export function resolveThemeFromTime({ now = new Date(), timeZone }) {
   const isDay = Number.isFinite(hour) && hour >= 6 && hour < 18;
   return isDay ? THEME_MODE.DAY : THEME_MODE.NIGHT;
 }
-
-export function readStoredThemeMode() {
-  try {
-    const v = localStorage.getItem('ge_theme_mode');
-    if (v === THEME_MODE.AUTO || v === THEME_MODE.DAY || v === THEME_MODE.NIGHT) return v;
-  } catch {
-    // ignore
-  }
-  return THEME_MODE.AUTO;
-}
-
-export function storeThemeMode(mode) {
-  try {
-    localStorage.setItem('ge_theme_mode', mode);
-  } catch {
-    // ignore
-  }
-}
-

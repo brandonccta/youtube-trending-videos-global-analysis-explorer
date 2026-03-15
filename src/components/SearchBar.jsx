@@ -31,7 +31,7 @@ export default function SearchBar({ onSelect, onFocus, onFirstInteraction }) {
   }, [onFirstInteraction]);
 
   const handleFocus = useCallback(() => {
-    // Clear current selection + input so the user can immediately type a new country.
+    // clear current selection + input so the user can immediately type a new country.
     onFirstInteraction?.();
     onFocus?.();
     if (query) {

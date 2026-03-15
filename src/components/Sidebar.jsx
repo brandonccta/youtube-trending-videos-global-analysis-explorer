@@ -1,35 +1,14 @@
 import { useEffect, useMemo, useState, useRef, memo } from 'react';
 import tzLookup from 'tz-lookup';
 import COUNTRIES from '../data/countries';
-
-function formatViews(n) {
-  if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(1) + 'B';
-  if (n >= 1_000_000)     return (n / 1_000_000).toFixed(1) + 'M';
-  if (n >= 1_000)         return (n / 1_000).toFixed(1) + 'K';
-  return String(n);
-}
-
-function formatDate(dateString) {
-  if (!dateString) return '—';
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString; // Return as-is if invalid
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
-    });
-  } catch {
-    return dateString;
-  }
-}
+import { formatViews } from '../utils/formatNumber';
 
 function formatEngagement(rating) {
   if (rating === null || rating === undefined) return '—';
   if (typeof rating === 'number') {
     return rating.toFixed(2) + '%';
   }
-  // Try to parse if it's a string number
+  // try to parse if it's a string number
   const parsed = parseFloat(rating);
   if (!isNaN(parsed)) {
     return parsed.toFixed(2) + '%';
@@ -65,8 +44,8 @@ const TABS = [
 export default function Sidebar({ selectedIso, selectedName, channels, categories, videos, loading, error }) {
   const [activeTab, setActiveTab] = useState('channels');
   const hasSelection = !!selectedIso;
-  // Explicitly cap projections to the Top 10 results (API *should* already do this,
-  // but keeping it here prevents accidental "Top 9" regressions if upstream changes).
+  // explicitly cap projections to the top 10 results (api *should* already do this,
+  // but keeping it here prevents accidental "top 9" regressions if upstream changes).
   const topChannels = useMemo(() => channels.slice(0, 10), [channels]);
   const topCategories = useMemo(() => categories.slice(0, 10), [categories]);
   const topVideos = useMemo(() => videos.slice(0, 10), [videos]);
@@ -75,10 +54,11 @@ export default function Sidebar({ selectedIso, selectedName, channels, categorie
                   activeTab === 'categories' ? topCategories.length > 0 : 
                   topVideos.length > 0;
 
-  const selectedCountry = useMemo(() => {
-    if (!selectedIso) return null;
-    return COUNTRIES.find(c => c.iso === selectedIso) ?? null;
-  }, [selectedIso]);
+  const countryByIso = useMemo(
+    () => new Map(COUNTRIES.map(c => [c.iso, c])),
+    [],
+  );
+  const selectedCountry = selectedIso ? (countryByIso.get(selectedIso) ?? null) : null;
 
   const timeZone = useMemo(() => {
     if (!selectedCountry) return null;
@@ -92,9 +72,9 @@ export default function Sidebar({ selectedIso, selectedName, channels, categorie
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     if (!hasSelection || !timeZone) return;
-    // Update once per second (live clock).
+    // update once per second (live clock).
     const id = window.setInterval(() => setNow(new Date()), 1000);
-    // Ensure we don't show a stale time if the user selects a country mid-minute.
+    // ensure we don't show a stale time if the user selects a country mid-minute.
     setNow(new Date());
     return () => window.clearInterval(id);
   }, [hasSelection, timeZone]);
@@ -120,7 +100,7 @@ export default function Sidebar({ selectedIso, selectedName, channels, categorie
   }, [selectedCountry]);
 
   return (
-    <aside className="w-80 shrink-0 bg-ge-panel border-l border-ge-border flex flex-col overflow-hidden">
+    <aside className="ge-sidebar w-80 shrink-0 bg-ge-panel border-l border-ge-border flex flex-col overflow-hidden">
 
       {/* Header */}
       <div className={`px-6 pt-5 pb-4 border-b border-ge-border relative overflow-hidden shrink-0 ${hasSelection ? 'after:absolute after:top-0 after:left-0 after:right-0 after:h-0.5 after:bg-linear-to-r after:from-transparent after:via-ge-accent after:to-transparent' : ''}`}>
@@ -181,7 +161,7 @@ export default function Sidebar({ selectedIso, selectedName, channels, categorie
       )}
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto p-5">
+      <div className="ge-sidebar-body flex-1 overflow-y-auto p-5">
 
         {/* Empty state */}
         {!hasSelection && (
@@ -396,10 +376,10 @@ const VideoTitle = memo(function VideoTitle({ title }) {
     const needsScroll = textWidth > containerWidth;
     setShouldScroll(needsScroll);
     if (needsScroll) {
-      // Calculate how much to scroll: negative of (textWidth - containerWidth)
+      // calculate how much to scroll: negative of (textWidth - containerWidth)
       const distance = -(textWidth - containerWidth);
       setScrollDistance(distance);
-      // Calculate duration for consistent speed (e.g., 50px per second)
+      // calculate duration for consistent speed (e.g., 50px per second)
       const SPEED_PX_PER_SEC = 50;
       const duration = Math.abs(distance) / SPEED_PX_PER_SEC;
       setAnimationDuration(duration);
@@ -437,11 +417,11 @@ const VideoList = memo(function VideoList({ videos }) {
           const cat = CATEGORY_COLORS[video.video_category_id] ?? DEFAULT_CAT;
           const videoTitle = video.video_title || video.title || 'Untitled Video';
           const channelTitle = video.channel_title || 'Unknown Channel';
-          // Handle different possible column names for view count
+          // handle different possible column names for view count
           const viewCount = video.video_view_count || video.view_count || video.views || video.total_views || 0;
-          // Handle different possible column names for engagement rating
+          // handle different possible column names for engagement rating
           const engagement = video.engagement_rating || video.engagement_score || video.engagement || null;
-          const displayRank = i + 1; // Sequential numbering 1-10
+          const displayRank = i + 1; // sequential numbering 1-10
           return (
             <div
               key={`${displayRank}-${videoTitle}`}
