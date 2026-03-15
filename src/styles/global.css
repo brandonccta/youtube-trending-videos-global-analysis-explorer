@@ -253,6 +253,13 @@ html, body, #root {
     transition: opacity 0.2s ease-out;
   }
 
+  /* Optional: override empty state (globe + hint text) position, e.g.: */
+     .ge-main .ge-sidebar .ge-sidebar-body .ge-sidebar-empty-state {
+       justify-content: flex-start;
+       padding-top: 0.5rem;
+     }
+ 
+
   .ge-header {
     flex-direction: column;
     align-items: stretch;

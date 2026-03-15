@@ -5,7 +5,7 @@ import { formatViews } from '../utils/formatNumber';
 
 const MOBILE_BREAKPOINT = 640;
 const SHEET_SNAP_POINTS_VH = [25, 50, 55, 92]; // peek, half, full, up-to-header (92vh so panel can overlay to header)
-const SHEET_DEFAULT_VH = 45;
+const SHEET_DEFAULT_VH = 40;
 /** when panel height reaches this (vh), it overlays the globe instead of squishing it. */
 const OVERLAY_THRESHOLD_VH = 50;
 
@@ -251,7 +251,7 @@ export default function Sidebar({ selectedIso, selectedName, channels, categorie
 
         {/* Empty state */}
         {!hasSelection && (
-          <div className="h-full flex flex-col items-center justify-center gap-4 text-center px-6 text-ge-muted">
+          <div className="ge-sidebar-empty-state h-full flex flex-col items-center justify-center gap-4 text-center px-6 text-ge-muted">
             <div className="text-4xl opacity-10 animate-globe-idle">🌍</div>
             <p className="text-[0.68rem] leading-relaxed">Spin the globe and click any country, or use the search bar to fly directly to a location.</p>
           </div>
