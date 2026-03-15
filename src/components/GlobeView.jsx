@@ -98,6 +98,8 @@ export default function GlobeView({
       if (t >= 1) {
         s.flyTimer.stop();
         s.flyTimer = null;
+        s.hoverIso = null;
+        redraw();
         onComplete?.();
       }
     });
@@ -195,7 +197,7 @@ export default function GlobeView({
         .style('cursor','pointer')
         // ── use pointer events — d3 drag does not intercept these ──
         .on('pointerover', function(event, d) {
-          if (s.isDragging) return;
+          if (s.isDragging || s.flyTimer) return;
           const iso  = NUM_TO_ISO[d.id];
           const name = NUM_TO_NAME[d.id];
           if (!iso || !name) return;
@@ -210,7 +212,7 @@ export default function GlobeView({
           }
         })
         .on('pointermove', function(event, d) {
-          if (s.isDragging) return;
+          if (s.isDragging || s.flyTimer) return;
           const tip = tipRef.current;
           if (tip) {
             tip.style.left = (event.offsetX + 14) + 'px';
@@ -229,7 +231,7 @@ export default function GlobeView({
           const iso  = NUM_TO_ISO[d.id];
           const name = NUM_TO_NAME[d.id];
           if (!iso || !name) return;
-          // click implies intent; clear hover so it can't "stick" mid-fly.
+          // click implies intent; clear hover so it can't "stick" mid-fly
           s.hoverIso = null;
           noteFirstInteraction();
           onCountryClick(iso, name);

@@ -76,7 +76,7 @@ html[data-theme="day"] {
 
   /* Logo glow (day): dark shadow on light header */
   --ge-logo-shadow: rgba(15,23,42,0.55);
-}
+}tale
 
 html, body, #root {
   height: 100%;
@@ -202,6 +202,11 @@ html, body, #root {
   }
 }
 
+/* Mobile draggable sheet: smooth snap after drag */
+.ge-sidebar-sheet-transition {
+  transition: height 0.25s cubic-bezier(0.33, 1, 0.68, 1);
+}
+
 /* Mobile (≤640px) */
 @media (max-width: 640px) {
   .ge-main {
@@ -212,13 +217,22 @@ html, body, #root {
     min-height: 260px;
   }
 
-  .ge-main .ge-sidebar {
+  .ge-main .ge-sidebar-mobile-wrap {
+    width: 100%;
+    max-width: 100%;
+    flex: 0 0 auto;
+    min-height: 0;
+    border-top: 1px solid var(--color-ge-border);
+    background: var(--color-ge-panel);
+  }
+
+  .ge-main .ge-sidebar-mobile-wrap .ge-sidebar {
     width: 100% !important;
     max-width: 100% !important;
     flex: 1 1 0;
     min-height: 0;
     border-left: none;
-    border-top: 1px solid var(--color-ge-border);
+    border-top: none;
   }
 
   .ge-main .ge-sidebar .ge-sidebar-body {

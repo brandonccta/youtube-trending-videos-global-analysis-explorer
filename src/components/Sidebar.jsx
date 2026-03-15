@@ -1,7 +1,24 @@
-import { useEffect, useMemo, useState, useRef, memo } from 'react';
+import { useEffect, useMemo, useState, useRef, memo, useCallback } from 'react';
 import tzLookup from 'tz-lookup';
 import COUNTRIES from '../data/countries';
 import { formatViews } from '../utils/formatNumber';
+
+const MOBILE_BREAKPOINT = 640;
+const SHEET_SNAP_POINTS_VH = [28, 50, 85]; // peek, half, full
+const SHEET_DEFAULT_VH = 50;
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`).matches
+  );
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`);
+    const handler = () => setIsMobile(mql.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
+  return isMobile;
+}
 
 function formatEngagement(rating) {
   if (rating === null || rating === undefined) return '—';
@@ -44,6 +61,53 @@ const TABS = [
 export default function Sidebar({ selectedIso, selectedName, channels, categories, videos, loading, error }) {
   const [activeTab, setActiveTab] = useState('channels');
   const hasSelection = !!selectedIso;
+  const isMobile = useIsMobile();
+
+  // Mobile draggable sheet: height in vh, snap points
+  const [sheetHeightVh, setSheetHeightVh] = useState(SHEET_DEFAULT_VH);
+  const [isDraggingSheet, setIsDraggingSheet] = useState(false);
+  const dragStartY = useRef(0);
+  const dragStartHeight = useRef(0);
+
+  const handleSheetPointerDown = useCallback((e) => {
+    if (!isMobile) return;
+    e.preventDefault();
+    dragStartY.current = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
+    dragStartHeight.current = sheetHeightVh;
+    setIsDraggingSheet(true);
+  }, [isMobile, sheetHeightVh]);
+
+  useEffect(() => {
+    if (!isDraggingSheet) return;
+    const handleMove = (e) => {
+      const clientY = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
+      const deltaY = dragStartY.current - clientY; // drag up = positive delta = more height
+      const vhPerPx = 100 / window.innerHeight;
+      let next = dragStartHeight.current + deltaY * vhPerPx;
+      next = Math.max(SHEET_SNAP_POINTS_VH[0], Math.min(SHEET_SNAP_POINTS_VH[SHEET_SNAP_POINTS_VH.length - 1], next));
+      setSheetHeightVh(next);
+      if (e.cancelable && e.touches) e.preventDefault();
+    };
+    const handleUp = () => {
+      setIsDraggingSheet(false);
+      setSheetHeightVh((current) => {
+        const nearest = SHEET_SNAP_POINTS_VH.reduce((a, b) =>
+          Math.abs(a - current) < Math.abs(b - current) ? a : b
+        );
+        return nearest;
+      });
+    };
+    window.addEventListener('pointermove', handleMove, { passive: true });
+    window.addEventListener('pointerup', handleUp);
+    window.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('touchend', handleUp);
+    return () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('touchend', handleUp);
+    };
+  }, [isDraggingSheet]);
   // explicitly cap projections to the top 10 results (api *should* already do this,
   // but keeping it here prevents accidental "top 9" regressions if upstream changes).
   const topChannels = useMemo(() => channels.slice(0, 10), [channels]);
@@ -99,8 +163,27 @@ export default function Sidebar({ selectedIso, selectedName, channels, categorie
     return selectedCountry.alpha2.toLowerCase();
   }, [selectedCountry]);
 
+  const mobileSheetStyle = isMobile
+    ? { height: `${sheetHeightVh}vh`, minHeight: 0 }
+    : undefined;
+
   return (
-    <aside className="ge-sidebar w-80 shrink-0 bg-ge-panel border-l border-ge-border flex flex-col overflow-hidden">
+    <div
+      className={`ge-sidebar-mobile-wrap flex flex-col overflow-hidden ${isMobile && !isDraggingSheet ? 'ge-sidebar-sheet-transition' : ''}`}
+      style={mobileSheetStyle}
+    >
+      {isMobile && (
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Drag to resize panel"
+          className="ge-sidebar-drag-handle shrink-0 touch-none cursor-grab active:cursor-grabbing flex items-center justify-center py-2"
+          onPointerDown={handleSheetPointerDown}
+        >
+          <span className="w-10 h-1 rounded-full bg-ge-border" aria-hidden />
+        </div>
+      )}
+      <aside className="ge-sidebar w-80 shrink-0 bg-ge-panel border-l border-ge-border flex flex-col overflow-hidden flex-1 min-h-0">
 
       {/* Header */}
       <div className={`px-6 pt-5 pb-4 border-b border-ge-border relative overflow-hidden shrink-0 ${hasSelection ? 'after:absolute after:top-0 after:left-0 after:right-0 after:h-0.5 after:bg-linear-to-r after:from-transparent after:via-ge-accent after:to-transparent' : ''}`}>
@@ -210,6 +293,7 @@ export default function Sidebar({ selectedIso, selectedName, channels, categorie
         )}
       </div>
     </aside>
+    </div>
   );
 }
 
