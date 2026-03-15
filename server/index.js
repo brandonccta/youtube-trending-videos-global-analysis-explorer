@@ -14,8 +14,11 @@ app.use(express.json());
 
 // ── Bootstrap ───────────────────────────────────────────────────
 let pool;
+let dbInitialized = false;
 
-async function start() {
+async function initializeDatabase() {
+  if (pool && dbInitialized) return;
+  
   // support both connection string (supabase/neon) and individual params
   const connectionConfig = process.env.DATABASE_URL
     ? {
@@ -44,11 +47,21 @@ async function start() {
     const dbName = connectionConfig.database || connectionConfig.connectionString?.split("/").pop();
     console.log(`[DB] Connected to "${dbName}"`);
     client.release();
+    dbInitialized = true;
   } catch (err) {
     console.error("[DB] Connection failed:", err.message);
     throw err;
   }
+}
 
+async function ensureDbInitialized() {
+  if (!dbInitialized) {
+    await initializeDatabase();
+  }
+}
+
+async function start() {
+  await initializeDatabase();
   app.listen(PORT, () => {
     console.log(`\nYouTube Analysis API  →  http://localhost:${PORT}\n`);
   });
@@ -57,6 +70,7 @@ async function start() {
 // ── Helpers ─────────────────────────────────────────────────────
 // get all table names (postgresql equivalent of SHOW TABLES)
 async function getTableNames() {
+  await ensureDbInitialized();
   const result = await pool.query(`
     SELECT table_name 
     FROM information_schema.tables 
@@ -68,6 +82,7 @@ async function getTableNames() {
 }
 
 async function assertTable(name) {
+  await ensureDbInitialized();
   const tables = await getTableNames();
   if (!tables.includes(name)) {
     throw Object.assign(new Error(`Table "${name}" not found`), {
@@ -81,6 +96,7 @@ async function assertTable(name) {
 // list all tables
 app.get("/api/tables", async (_req, res) => {
   try {
+    await ensureDbInitialized();
     res.json(await getTableNames());
   } catch (err) {
     console.error("[DB]", err.message);
@@ -91,6 +107,7 @@ app.get("/api/tables", async (_req, res) => {
 // describe a table's columns (postgresql equivalent of SHOW COLUMNS)
 app.get("/api/tables/:table/schema", async (req, res) => {
   try {
+    await ensureDbInitialized();
     await assertTable(req.params.table);
     const result = await pool.query(
       `SELECT 
@@ -113,6 +130,7 @@ app.get("/api/tables/:table/schema", async (req, res) => {
 // country-specific helpers (used by the react app)
 app.get("/api/country/top_channels", async (req, res) => {
   try {
+    await ensureDbInitialized();
     const { country } = req.query;
     if (!country) {
       return res.status(400).json({ error: 'Missing "country" query parameter' });
@@ -138,6 +156,7 @@ app.get("/api/country/top_channels", async (req, res) => {
 
 app.get("/api/country/top_categories", async (req, res) => {
   try {
+    await ensureDbInitialized();
     const { country } = req.query;
     if (!country) {
       return res.status(400).json({ error: 'Missing "country" query parameter' });
@@ -163,6 +182,7 @@ app.get("/api/country/top_categories", async (req, res) => {
 
 app.get("/api/country/top_videos", async (req, res) => {
   try {
+    await ensureDbInitialized();
     const { country } = req.query;
     if (!country) {
       return res.status(400).json({ error: 'Missing "country" query parameter' });
@@ -189,6 +209,7 @@ app.get("/api/country/top_videos", async (req, res) => {
 // generic table query (supports ?limit=100&offset=0 and simple equality filters)
 app.get("/api/tables/:table", async (req, res) => {
   try {
+    await ensureDbInitialized();
     await assertTable(req.params.table);
 
     const limit = Math.min(parseInt(req.query.limit ?? "100"), 10000);
@@ -221,6 +242,7 @@ app.get("/api/tables/:table", async (req, res) => {
 // run a raw read-only query (POST { "sql": "SELECT ..." })
 app.post("/api/query", async (req, res) => {
   try {
+    await ensureDbInitialized();
     const { sql } = req.body;
     if (!sql || typeof sql !== "string") {
       return res.status(400).json({ error: 'Missing "sql" in request body' });
@@ -249,6 +271,7 @@ app.post("/api/query", async (req, res) => {
 // health check
 app.get("/health", async (_req, res) => {
   try {
+    await ensureDbInitialized();
     await pool.query("SELECT 1");
     const dbName = process.env.DB_NAME || "unknown";
     res.json({ status: "ok", database: dbName });
@@ -275,8 +298,14 @@ function cleanup() {
 process.on("SIGINT", cleanup);
 process.on("SIGTERM", cleanup);
 
-// ── Start ───────────────────────────────────────────────────────
-start().catch((err) => {
-  console.error("Failed to start server:", err.message);
-  process.exit(1);
-});
+// ── Start (for local development only) ───────────────────────────
+// Only start server if not in Vercel environment
+if (process.env.VERCEL !== "1") {
+  start().catch((err) => {
+    console.error("Failed to start server:", err.message);
+    process.exit(1);
+  });
+}
+
+// Export for Vercel serverless functions
+export default app;
