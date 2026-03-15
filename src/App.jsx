@@ -13,7 +13,7 @@ export default function App() {
   const [showHints, setShowHints]     = useState(true);
   const [showModal, setShowModal]     = useState(false);
 
-  const { selectedIso, selectedName, channels, categories, loading, error, selectCountry, clear } = useCountryData();
+  const { selectedIso, selectedName, channels, categories, videos, loading, error, selectCountry, clear } = useCountryData();
 
   useEffect(() => { window.__COUNTRY_LIST__ = COUNTRIES; }, []);
 
@@ -33,7 +33,7 @@ export default function App() {
     setFlyTarget(null);
     clear();
     dismissHints();
-  }, [clear]);
+  }, [clear, dismissHints]);
 
   const handleFlyDone = useCallback(() => setFlyTarget(null), []);
 
@@ -41,7 +41,7 @@ export default function App() {
     setShowModal(true);
   }, []);
 
-  const hasCountryData = !loading && !error && (channels.length > 0 || categories.length > 0);
+  const hasCountryData = !loading && !error && (channels.length > 0 || categories.length > 0 || videos.length > 0);
 
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden bg-ge-bg text-ge-text font-mono">
@@ -87,7 +87,7 @@ export default function App() {
           onExploreMore={handleExploreMore}
           showExploreMore={!!selectedIso && hasCountryData}
         />
-        <Sidebar selectedIso={selectedIso} selectedName={selectedName} channels={channels} categories={categories} loading={loading} error={error} />
+        <Sidebar selectedIso={selectedIso} selectedName={selectedName} channels={channels} categories={categories} videos={videos} loading={loading} error={error} />
       </div>
 
       <CategoryTrendingModal

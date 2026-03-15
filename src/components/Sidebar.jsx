@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef, memo } from 'react';
 import tzLookup from 'tz-lookup';
 import COUNTRIES from '../data/countries';
 
@@ -7,6 +7,34 @@ function formatViews(n) {
   if (n >= 1_000_000)     return (n / 1_000_000).toFixed(1) + 'M';
   if (n >= 1_000)         return (n / 1_000).toFixed(1) + 'K';
   return String(n);
+}
+
+function formatDate(dateString) {
+  if (!dateString) return '—';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString; // Return as-is if invalid
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  } catch {
+    return dateString;
+  }
+}
+
+function formatEngagement(rating) {
+  if (rating === null || rating === undefined) return '—';
+  if (typeof rating === 'number') {
+    return rating.toFixed(2) + '%';
+  }
+  // Try to parse if it's a string number
+  const parsed = parseFloat(rating);
+  if (!isNaN(parsed)) {
+    return parsed.toFixed(2) + '%';
+  }
+  return String(rating);
 }
 
 export const CATEGORY_COLORS = {
@@ -31,17 +59,21 @@ export const DEFAULT_CAT = { bg: 'rgba(56,189,248,0.06)', border: 'rgba(56,189,2
 const TABS = [
   { id: 'channels',   label: 'Top Channels' },
   { id: 'categories', label: 'Top Categories' },
+  { id: 'videos',     label: 'Top Videos' },
 ];
 
-export default function Sidebar({ selectedIso, selectedName, channels, categories, loading, error }) {
+export default function Sidebar({ selectedIso, selectedName, channels, categories, videos, loading, error }) {
   const [activeTab, setActiveTab] = useState('channels');
   const hasSelection = !!selectedIso;
   // Explicitly cap projections to the Top 10 results (API *should* already do this,
   // but keeping it here prevents accidental "Top 9" regressions if upstream changes).
   const topChannels = useMemo(() => channels.slice(0, 10), [channels]);
-  const topCategories = useMemo(() => categories.slice(0, 5), [categories]);
+  const topCategories = useMemo(() => categories.slice(0, 10), [categories]);
+  const topVideos = useMemo(() => videos.slice(0, 10), [videos]);
 
-  const hasData = activeTab === 'channels' ? topChannels.length > 0 : topCategories.length > 0;
+  const hasData = activeTab === 'channels' ? topChannels.length > 0 : 
+                  activeTab === 'categories' ? topCategories.length > 0 : 
+                  topVideos.length > 0;
 
   const selectedCountry = useMemo(() => {
     if (!selectedIso) return null;
@@ -177,12 +209,17 @@ export default function Sidebar({ selectedIso, selectedName, channels, categorie
         {hasSelection && !loading && !error && activeTab === 'categories' && topCategories.length > 0 && (
           <CategoryList categories={topCategories} />
         )}
+
+        {/* Videos tab */}
+        {hasSelection && !loading && !error && activeTab === 'videos' && topVideos.length > 0 && (
+          <VideoList videos={topVideos} />
+        )}
       </div>
     </aside>
   );
 }
 
-function ChannelList({ channels }) {
+const ChannelList = memo(function ChannelList({ channels }) {
   return (
     <>
       <div className="text-[0.56rem] tracking-[0.14em] uppercase text-ge-muted mb-3 pb-1.5 border-b border-ge-border">
@@ -202,21 +239,52 @@ function ChannelList({ channels }) {
                   {ch.rank}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-display font-semibold text-[0.78rem] text-ge-text leading-snug truncate" title={ch.channel_title}>
-                    {ch.channel_title}
+                  {ch.channel_custom_url ? (
+                    <a
+                      href={
+                        ch.channel_custom_url.startsWith('http') 
+                          ? ch.channel_custom_url
+                          : ch.channel_custom_url.startsWith('/')
+                          ? `https://youtube.com${ch.channel_custom_url}`
+                          : ch.channel_custom_url.startsWith('@')
+                          ? `https://youtube.com/${ch.channel_custom_url}`
+                          : `https://youtube.com/@${ch.channel_custom_url}`
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-display font-semibold text-[0.78rem] text-ge-text leading-snug truncate hover:text-ge-accent transition-colors cursor-pointer"
+                      title={ch.channel_title}
+                    >
+                      {ch.channel_title}
+                    </a>
+                  ) : (
+                    <div className="font-display font-semibold text-[0.78rem] text-ge-text leading-snug truncate" title={ch.channel_title}>
+                      {ch.channel_title}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 mt-1">
+                    {ch.channel_subscribers != null && ch.channel_subscribers > 0 && (
+                      <div className="text-[0.65rem] text-ge-dim font-medium">
+                        {formatViews(ch.channel_subscribers)} subs
+                      </div>
+                    )}
+                    <span
+                      className="inline-block rounded px-1.5 py-0.5 text-[0.52rem] font-medium tracking-wide"
+                      style={{ background: cat.bg, border: `1px solid ${cat.border}`, color: cat.text }}
+                    >
+                      {ch.video_category_id}
+                    </span>
                   </div>
-                  <span
-                    className="inline-block mt-1 rounded px-1.5 py-0.5 text-[0.52rem] font-medium tracking-wide"
-                    style={{ background: cat.bg, border: `1px solid ${cat.border}`, color: cat.text }}
-                  >
-                    {ch.video_category_id}
-                  </span>
                 </div>
               </div>
               <div className="flex gap-4 mt-2.5 pt-2 border-t border-ge-border/50">
                 <div>
-                  <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">Views</div>
-                  <div className="font-display font-bold text-[0.8rem] text-ge-accent">{formatViews(ch.total_views)}</div>
+                  <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">Total Views</div>
+                  <div className="font-display font-bold text-[0.8rem] text-ge-accent">{formatViews(ch.total_views || 0)}</div>
+                </div>
+                <div>
+                  <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">Total Videos</div>
+                  <div className="font-display font-bold text-[0.8rem] text-ge-text">{formatViews(ch.total_videos || 0)}</div>
                 </div>
                 <div>
                   <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">Trending</div>
@@ -229,10 +297,13 @@ function ChannelList({ channels }) {
       </div>
     </>
   );
-}
+});
 
-function CategoryList({ categories }) {
-  const maxViews = Math.max(...categories.map(c => c.total_views));
+const CategoryList = memo(function CategoryList({ categories }) {
+  const maxViews = useMemo(() => {
+    if (!categories.length) return 1;
+    return Math.max(...categories.map(c => c.total_views));
+  }, [categories]);
 
   return (
     <>
@@ -279,8 +350,12 @@ function CategoryList({ categories }) {
                   <div className="font-display font-bold text-[0.8rem] text-ge-text">{formatViews(cat.avg_views)}</div>
                 </div>
                 <div>
+                  <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">Likes</div>
+                  <div className="font-display font-bold text-[0.8rem] text-ge-text">{formatViews(cat.total_likes || 0)}</div>
+                </div>
+                <div>
                   <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">Trending</div>
-                  <div className="font-display font-bold text-[0.8rem] text-ge-text">{formatViews(cat.trending_appearances)}x</div>
+                  <div className="font-display font-bold text-[0.8rem] text-ge-text">{cat.trending_appearances}x</div>
                 </div>
               </div>
             </div>
@@ -289,4 +364,113 @@ function CategoryList({ categories }) {
       </div>
     </>
   );
-}
+});
+
+const VideoTitle = memo(function VideoTitle({ title }) {
+  const containerRef = useRef(null);
+  const textRef = useRef(null);
+  const [shouldScroll, setShouldScroll] = useState(false);
+  const [scrollDistance, setScrollDistance] = useState(0);
+  const [animationDuration, setAnimationDuration] = useState(0);
+
+  useEffect(() => {
+    if (!containerRef.current || !textRef.current) return;
+    const container = containerRef.current;
+    const text = textRef.current;
+    const containerWidth = container.offsetWidth;
+    const textWidth = text.scrollWidth;
+    const needsScroll = textWidth > containerWidth;
+    setShouldScroll(needsScroll);
+    if (needsScroll) {
+      // Calculate how much to scroll: negative of (textWidth - containerWidth)
+      const distance = -(textWidth - containerWidth);
+      setScrollDistance(distance);
+      // Calculate duration for consistent speed (e.g., 50px per second)
+      const SPEED_PX_PER_SEC = 50;
+      const duration = Math.abs(distance) / SPEED_PX_PER_SEC;
+      setAnimationDuration(duration);
+    }
+  }, [title]);
+
+  return (
+    <div 
+      ref={containerRef}
+      className="video-title-scroll font-display font-semibold text-[0.78rem] text-ge-text leading-snug" 
+      title={title}
+    >
+      <span 
+        ref={textRef}
+        className={`inline-block whitespace-nowrap ${shouldScroll ? 'hover-scroll' : ''}`}
+        style={shouldScroll ? {
+          '--scroll-distance': `${scrollDistance}px`,
+          '--animation-duration': `${animationDuration}s`
+        } : {}}
+      >
+        {title}
+      </span>
+    </div>
+  );
+});
+
+const VideoList = memo(function VideoList({ videos }) {
+  return (
+    <>
+      <div className="text-[0.56rem] tracking-[0.14em] uppercase text-ge-muted mb-3 pb-1.5 border-b border-ge-border">
+        Top Trending Videos
+      </div>
+      <div className="flex flex-col gap-2">
+        {videos.map((video, i) => {
+          const cat = CATEGORY_COLORS[video.video_category_id] ?? DEFAULT_CAT;
+          const videoTitle = video.video_title || video.title || 'Untitled Video';
+          const channelTitle = video.channel_title || 'Unknown Channel';
+          // Handle different possible column names for view count
+          const viewCount = video.video_view_count || video.view_count || video.views || video.total_views || 0;
+          // Handle different possible column names for engagement rating
+          const engagement = video.engagement_rating || video.engagement_score || video.engagement || null;
+          const displayRank = i + 1; // Sequential numbering 1-10
+          return (
+            <div
+              key={`${displayRank}-${videoTitle}`}
+              className="bg-ge-surface border border-ge-border rounded-lg p-3 hover:border-ge-accent transition-colors animate-fade-in"
+              style={{ animationDelay: `${i * 40}ms` }}
+            >
+              <div className="flex items-start gap-2.5">
+                <div className="shrink-0 w-7 h-7 rounded-md bg-ge-surface2 border border-ge-border flex items-center justify-center font-display font-bold text-[0.75rem] text-ge-accent">
+                  {displayRank}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <VideoTitle title={videoTitle} />
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <div className="text-[0.65rem] text-ge-dim truncate" title={channelTitle}>
+                      {channelTitle}
+                    </div>
+                    <span
+                      className="inline-block rounded px-1.5 py-0.5 text-[0.52rem] font-medium tracking-wide shrink-0"
+                      style={{ background: cat.bg, border: `1px solid ${cat.border}`, color: cat.text }}
+                    >
+                      {video.video_category_id}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-4 mt-2.5 pt-2 border-t border-ge-border/50">
+                <div>
+                  <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">Total Views</div>
+                  <div className="font-display font-bold text-[0.8rem] text-ge-accent">{formatViews(viewCount)}</div>
+                </div>
+                <div>
+                  <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">Engagement Rating</div>
+                  <div className="font-display font-bold text-[0.8rem] text-ge-text">{formatEngagement(engagement)}</div>
+                </div>
+                <div>
+                  <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">Trending</div>
+                  <div className="font-display font-bold text-[0.8rem] text-ge-text">{video.trending_appearances || 0}x</div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+});

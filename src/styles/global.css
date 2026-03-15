@@ -171,3 +171,28 @@ html, body, #root {
 .ge-modal-panel {
   animation: geModalPanelIn 0.44s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+.video-title-scroll {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+}
+
+.video-title-scroll > span {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.video-title-scroll:hover > span.hover-scroll {
+  animation: scrollTextHover linear forwards;
+  animation-duration: var(--animation-duration, 3s);
+}
+
+@keyframes scrollTextHover {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(var(--scroll-distance, 0px));
+  }
+}
