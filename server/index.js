@@ -273,7 +273,9 @@ app.get("/api/health", async (_req, res) => {
   try {
     await ensureDbInitialized();
     await pool.query("SELECT 1");
-    const dbName = process.env.DB_NAME || "unknown";
+    const dbName = process.env.DATABASE_URL
+      ? process.env.DATABASE_URL.split("/").pop().split("?")[0]
+      : process.env.DB_NAME || "unknown";
     res.json({ status: "ok", database: dbName });
   } catch {
     res.status(503).json({ status: "unhealthy" });
