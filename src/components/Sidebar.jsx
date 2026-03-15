@@ -4,7 +4,7 @@ import COUNTRIES from '../data/countries';
 import { formatViews } from '../utils/formatNumber';
 
 const MOBILE_BREAKPOINT = 640;
-const SHEET_SNAP_POINTS_VH = [28, 50, 85]; // peek, half, full
+const SHEET_SNAP_POINTS_VH = [30, 50, 100]; // peek, half, full
 const SHEET_DEFAULT_VH = 50;
 
 function useIsMobile() {
