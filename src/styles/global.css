@@ -211,6 +211,7 @@ html, body, #root {
 @media (max-width: 640px) {
   .ge-main {
     flex-direction: column;
+    position: relative;
   }
 
   .ge-main .ge-globe {
@@ -224,6 +225,18 @@ html, body, #root {
     min-height: 0;
     border-top: 1px solid var(--color-ge-border);
     background: var(--color-ge-panel);
+  }
+
+  /* Above threshold: panel overlays globe instead of squishing; globe keeps its size */
+  .ge-main .ge-sidebar-mobile-wrap.ge-sidebar-mobile-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    flex: none;
+    max-height: 100%;
+    z-index: 10;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
   }
 
   .ge-main .ge-sidebar-mobile-wrap .ge-sidebar {

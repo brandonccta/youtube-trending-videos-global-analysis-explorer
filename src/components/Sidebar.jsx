@@ -4,8 +4,10 @@ import COUNTRIES from '../data/countries';
 import { formatViews } from '../utils/formatNumber';
 
 const MOBILE_BREAKPOINT = 640;
-const SHEET_SNAP_POINTS_VH = [28, 50, 55]; // peek, half, full
-const SHEET_DEFAULT_VH = 50;
+const SHEET_SNAP_POINTS_VH = [25, 50, 55, 92]; // peek, half, full, up-to-header (92vh so panel can overlay to header)
+const SHEET_DEFAULT_VH = 45;
+/** when panel height reaches this (vh), it overlays the globe instead of squishing it. */
+const OVERLAY_THRESHOLD_VH = 50;
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() =>
@@ -163,13 +165,14 @@ export default function Sidebar({ selectedIso, selectedName, channels, categorie
     return selectedCountry.alpha2.toLowerCase();
   }, [selectedCountry]);
 
+  const isOverlayMode = isMobile && sheetHeightVh >= OVERLAY_THRESHOLD_VH;
   const mobileSheetStyle = isMobile
     ? { height: `${sheetHeightVh}vh`, minHeight: 0 }
     : undefined;
 
   return (
     <div
-      className={`ge-sidebar-mobile-wrap flex flex-col overflow-hidden ${isMobile && !isDraggingSheet ? 'ge-sidebar-sheet-transition' : ''}`}
+      className={`ge-sidebar-mobile-wrap flex flex-col overflow-hidden ${isMobile && !isDraggingSheet ? 'ge-sidebar-sheet-transition' : ''} ${isOverlayMode ? 'ge-sidebar-mobile-overlay' : ''}`}
       style={mobileSheetStyle}
     >
       {isMobile && (
