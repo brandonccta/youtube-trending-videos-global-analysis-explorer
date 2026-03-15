@@ -1,173 +1,53 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import mysql from "mysql2/promise";
-import { Client } from "ssh2";
-import net from "net";
-import { readFileSync } from "fs";
-import { homedir } from "os";
-import path from "path";
+import pg from "pg";
+const { Pool } = pg;
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
 
-app.use(cors({ origin: "http://localhost:3000" }));
+// allow all origins in production, or specific origin in development
+const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000";
+app.use(cors({ origin: corsOrigin }));
 app.use(express.json());
-
-// ── SSH tunnel through a jump host ──────────────────────────────
-function resolvePath(p) {
-  if (p.startsWith("~")) return path.join(homedir(), p.slice(1));
-  return p;
-}
-
-function buildAuthConfig(prefix) {
-  const password = process.env[`${prefix}_PASSWORD`] ?? "";
-  const keyPath = process.env[`${prefix}_PRIVATE_KEY`];
-
-  const cfg = {
-    host: process.env[`${prefix}_HOST`],
-    port: parseInt(process.env[`${prefix}_PORT`] ?? "22"),
-    username: process.env[`${prefix}_USER`],
-    tryKeyboard: true,
-  };
-
-  if (keyPath) {
-    cfg.privateKey = readFileSync(resolvePath(keyPath));
-    const passphrase = process.env[`${prefix}_PASSPHRASE`];
-    if (passphrase) cfg.passphrase = passphrase;
-  }
-
-  if (process.env.SSH_AGENT_SOCK || process.env.SSH_AUTH_SOCK) {
-    cfg.agent = process.env.SSH_AGENT_SOCK || process.env.SSH_AUTH_SOCK;
-  }
-
-  if (!keyPath && password) {
-    cfg.password = password;
-    // Force keyboard-interactive first — UCR servers reject plain "password" auth
-    cfg.authHandler = (methodsLeft, partialSuccess, callback) => {
-      if (methodsLeft === null) {
-        return callback("keyboard-interactive");
-      }
-      if (methodsLeft.includes("keyboard-interactive")) {
-        return callback("keyboard-interactive");
-      }
-      if (methodsLeft.includes("password")) {
-        return callback("password");
-      }
-      return callback(false);
-    };
-  }
-
-  return cfg;
-}
-
-function createSSHTunnel() {
-  return new Promise((resolve, reject) => {
-    const jumpClient = new Client();
-    const targetClient = new Client();
-
-    const jumpCfg = buildAuthConfig("SSH_JUMP");
-    const targetCfg = buildAuthConfig("SSH_TARGET");
-
-    jumpClient.on("ready", () => {
-      console.log(`[SSH] Jump host connected  (${jumpCfg.host})`);
-
-      jumpClient.forwardOut(
-        "127.0.0.1",
-        0,
-        process.env.SSH_TARGET_HOST,
-        parseInt(process.env.SSH_TARGET_PORT ?? "22"),
-        (err, stream) => {
-          if (err) return reject(err);
-          targetClient.connect({ ...targetCfg, sock: stream });
-        },
-      );
-    });
-
-    targetClient.on("ready", () => {
-      console.log(
-        `[SSH] Target host connected (${process.env.SSH_TARGET_HOST})`,
-      );
-
-      const dbHost = process.env.DB_HOST ?? "127.0.0.1";
-      const dbPort = parseInt(process.env.DB_PORT ?? "3306");
-
-      const server = net.createServer((sock) => {
-        targetClient.forwardOut(
-          "127.0.0.1",
-          0,
-          dbHost,
-          dbPort,
-          (err, stream) => {
-            if (err) {
-              sock.end();
-              return;
-            }
-            sock.pipe(stream).pipe(sock);
-          },
-        );
-      });
-
-      server.listen(0, "127.0.0.1", () => {
-        const localPort = server.address().port;
-        console.log(
-          `[SSH] Tunnel open  localhost:${localPort} → ${dbHost}:${dbPort}`,
-        );
-        resolve({ localPort, server, jumpClient, targetClient });
-      });
-    });
-
-    // Handle keyboard-interactive auth (common on university servers)
-    for (const client of [jumpClient, targetClient]) {
-      const isJump = client === jumpClient;
-      const pw = isJump ? jumpCfg.password : targetCfg.password;
-      client.on(
-        "keyboard-interactive",
-        (_name, _inst, _lang, _prompts, finish) => {
-          finish([pw]);
-        },
-      );
-    }
-
-    jumpClient.on("error", (e) => {
-      console.error("[SSH] Jump error:", e.message);
-      reject(e);
-    });
-    targetClient.on("error", (e) => {
-      console.error("[SSH] Target error:", e.message);
-      reject(e);
-    });
-
-    jumpClient.connect(jumpCfg);
-  });
-}
 
 // ── Bootstrap ───────────────────────────────────────────────────
 let pool;
-let tunnel;
 
 async function start() {
-  const dbConfig = {
-    host: process.env.DB_HOST ?? "127.0.0.1",
-    port: parseInt(process.env.DB_PORT ?? "3306"),
-    user: process.env.DB_USER ?? "root",
-    password: process.env.DB_PASSWORD ?? "",
-    database: process.env.DB_NAME ?? "youtube_analysis",
-    waitForConnections: true,
-    connectionLimit: 10,
-  };
+  // support both connection string (supabase/neon) and individual params
+  const connectionConfig = process.env.DATABASE_URL
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: process.env.DB_SSL !== "false" ? { rejectUnauthorized: false } : false,
+      }
+    : {
+        host: process.env.DB_HOST ?? "localhost",
+        port: parseInt(process.env.DB_PORT ?? "5432"),
+        user: process.env.DB_USER ?? "postgres",
+        password: process.env.DB_PASSWORD ?? "",
+        database: process.env.DB_NAME ?? "youtube_analysis",
+        ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
+      };
 
-  if (process.env.SSH_ENABLED === "true") {
-    tunnel = await createSSHTunnel();
-    dbConfig.host = "127.0.0.1";
-    dbConfig.port = tunnel.localPort;
+  pool = new Pool({
+    ...connectionConfig,
+    max: 10, // connection pool size
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+  });
+
+  // test connection
+  try {
+    const client = await pool.connect();
+    const dbName = connectionConfig.database || connectionConfig.connectionString?.split("/").pop();
+    console.log(`[DB] Connected to "${dbName}"`);
+    client.release();
+  } catch (err) {
+    console.error("[DB] Connection failed:", err.message);
+    throw err;
   }
-
-  pool = mysql.createPool(dbConfig);
-
-  const conn = await pool.getConnection();
-  console.log(`[DB] Connected to "${dbConfig.database}"`);
-  conn.release();
 
   app.listen(PORT, () => {
     console.log(`\nYouTube Analysis API  →  http://localhost:${PORT}\n`);
@@ -175,9 +55,16 @@ async function start() {
 }
 
 // ── Helpers ─────────────────────────────────────────────────────
+// get all table names (postgresql equivalent of SHOW TABLES)
 async function getTableNames() {
-  const [rows] = await pool.query("SHOW TABLES");
-  return rows.map((r) => Object.values(r)[0]);
+  const result = await pool.query(`
+    SELECT table_name 
+    FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_type = 'BASE TABLE'
+    ORDER BY table_name
+  `);
+  return result.rows.map((r) => r.table_name);
 }
 
 async function assertTable(name) {
@@ -191,7 +78,7 @@ async function assertTable(name) {
 
 // ── Routes ──────────────────────────────────────────────────────
 
-// List all tables
+// list all tables
 app.get("/api/tables", async (_req, res) => {
   try {
     res.json(await getTableNames());
@@ -201,20 +88,29 @@ app.get("/api/tables", async (_req, res) => {
   }
 });
 
-// Describe a table's columns
+// describe a table's columns (postgresql equivalent of SHOW COLUMNS)
 app.get("/api/tables/:table/schema", async (req, res) => {
   try {
     await assertTable(req.params.table);
-    const [cols] = await pool.query(
-      `SHOW COLUMNS FROM \`${req.params.table}\``,
+    const result = await pool.query(
+      `SELECT 
+        column_name as Field,
+        data_type as Type,
+        is_nullable as Null,
+        column_default as Default
+      FROM information_schema.columns 
+      WHERE table_schema = 'public' 
+      AND table_name = $1
+      ORDER BY ordinal_position`,
+      [req.params.table]
     );
-    res.json(cols);
+    res.json(result.rows);
   } catch (err) {
     res.status(err.status ?? 500).json({ error: err.message });
   }
 });
 
-// Country-specific helpers (used by the React app)
+// country-specific helpers (used by the react app)
 app.get("/api/country/top_channels", async (req, res) => {
   try {
     const { country } = req.query;
@@ -222,18 +118,18 @@ app.get("/api/country/top_channels", async (req, res) => {
       return res.status(400).json({ error: 'Missing "country" query parameter' });
     }
 
-    await assertTable("top_channels_per_country");
+    await assertTable("top10_channels_per_country");
 
     const sql = `
       SELECT *
-      FROM \`top_channels_per_country\`
-      WHERE \`video_trending_country\` = ?
-      ORDER BY \`trending_appearances\` DESC
+      FROM "top10_channels_per_country"
+      WHERE "video_trending_country" = $1
+      ORDER BY "trending_appearances" DESC
       LIMIT 10
     `;
 
-    const [rows] = await pool.query(sql, [country]);
-    res.json(rows);
+    const result = await pool.query(sql, [country]);
+    res.json(result.rows);
   } catch (err) {
     console.error("[API] /api/country/top_channels:", err.message);
     res.status(err.status ?? 500).json({ error: err.message });
@@ -247,25 +143,50 @@ app.get("/api/country/top_categories", async (req, res) => {
       return res.status(400).json({ error: 'Missing "country" query parameter' });
     }
 
-    await assertTable("top_categories_per_country");
+    await assertTable("top10_categories_per_country");
 
     const sql = `
       SELECT *
-      FROM \`top_categories_per_country\`
-      WHERE \`video_trending_country\` = ?
-      ORDER BY \`trending_appearances\` DESC
-      LIMIT 5
+      FROM "top10_categories_per_country"
+      WHERE "video_trending_country" = $1
+      ORDER BY "trending_appearances" DESC
+      LIMIT 10
     `;
 
-    const [rows] = await pool.query(sql, [country]);
-    res.json(rows);
+    const result = await pool.query(sql, [country]);
+    res.json(result.rows);
   } catch (err) {
     console.error("[API] /api/country/top_categories:", err.message);
     res.status(err.status ?? 500).json({ error: err.message });
   }
 });
 
-// Generic table query (supports ?limit=100&offset=0 and simple equality filters)
+app.get("/api/country/top_videos", async (req, res) => {
+  try {
+    const { country } = req.query;
+    if (!country) {
+      return res.status(400).json({ error: 'Missing "country" query parameter' });
+    }
+
+    await assertTable("top10_videos_per_country");
+
+    const sql = `
+      SELECT *
+      FROM "top10_videos_per_country"
+      WHERE "video_trending_country" = $1
+      ORDER BY "trending_appearances" DESC
+      LIMIT 10
+    `;
+
+    const result = await pool.query(sql, [country]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("[API] /api/country/top_videos:", err.message);
+    res.status(err.status ?? 500).json({ error: err.message });
+  }
+});
+
+// generic table query (supports ?limit=100&offset=0 and simple equality filters)
 app.get("/api/tables/:table", async (req, res) => {
   try {
     await assertTable(req.params.table);
@@ -277,26 +198,27 @@ app.get("/api/tables/:table", async (req, res) => {
     delete filters.limit;
     delete filters.offset;
 
-    let sql = `SELECT * FROM \`${req.params.table}\``;
+    let sql = `SELECT * FROM "${req.params.table}"`;
     const vals = [];
+    let paramIndex = 1;
 
     const whereClauses = Object.entries(filters).map(([col, val]) => {
       vals.push(val);
-      return `\`${col}\` = ?`;
+      return `"${col}" = $${paramIndex++}`;
     });
 
     if (whereClauses.length) sql += " WHERE " + whereClauses.join(" AND ");
-    sql += " LIMIT ? OFFSET ?";
+    sql += ` LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
     vals.push(limit, offset);
 
-    const [rows] = await pool.query(sql, vals);
-    res.json(rows);
+    const result = await pool.query(sql, vals);
+    res.json(result.rows);
   } catch (err) {
     res.status(err.status ?? 500).json({ error: err.message });
   }
 });
 
-// Run a raw read-only query (POST { "sql": "SELECT ..." })
+// run a raw read-only query (POST { "sql": "SELECT ..." })
 app.post("/api/query", async (req, res) => {
   try {
     const { sql } = req.body;
@@ -308,26 +230,28 @@ app.post("/api/query", async (req, res) => {
     if (
       !normalized.startsWith("SELECT") &&
       !normalized.startsWith("SHOW") &&
-      !normalized.startsWith("DESCRIBE")
+      !normalized.startsWith("DESCRIBE") &&
+      !normalized.startsWith("WITH")
     ) {
       return res
         .status(403)
-        .json({ error: "Only SELECT / SHOW / DESCRIBE queries are allowed" });
+        .json({ error: "Only SELECT / SHOW / DESCRIBE / WITH queries are allowed" });
     }
 
-    const [rows] = await pool.query(sql);
-    res.json(rows);
+    const result = await pool.query(sql);
+    res.json(result.rows);
   } catch (err) {
     console.error("[DB]", err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Health check
+// health check
 app.get("/health", async (_req, res) => {
   try {
     await pool.query("SELECT 1");
-    res.json({ status: "ok", database: process.env.DB_NAME });
+    const dbName = process.env.DB_NAME || "unknown";
+    res.json({ status: "ok", database: dbName });
   } catch {
     res.status(503).json({ status: "unhealthy" });
   }
@@ -343,25 +267,11 @@ function cleanup() {
   console.log("\nShutting down…");
   pool?.end().catch(() => {});
 
-  if (tunnel?.targetClient) {
-    console.log("[SSH] Stopping remote MySQL…");
-    tunnel.targetClient.exec(
-      "mysqladmin -h 127.0.0.1 -u root shutdown",
-      (err, stream) => {
-        if (err) console.error("[SSH] Failed to stop MySQL:", err.message);
-        else
-          stream.on("close", () => console.log("[SSH] Remote MySQL stopped."));
-
-        tunnel.targetClient?.end();
-        tunnel.jumpClient?.end();
-        tunnel.server?.close();
-        process.exit(0);
-      },
-    );
-  } else {
+  setTimeout(() => {
     process.exit(0);
-  }
+  }, 1000);
 }
+
 process.on("SIGINT", cleanup);
 process.on("SIGTERM", cleanup);
 
