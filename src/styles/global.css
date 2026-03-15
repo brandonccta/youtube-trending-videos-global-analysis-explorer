@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "flag-icons/css/flag-icons.min.css";
 
 @theme {
   /* ── Custom color palette ── */
@@ -38,6 +39,9 @@
   --ge-globe-sheen: rgba(255,255,255,0.07);
   --ge-globe-ring: rgba(56,189,248,0.06);
   --ge-globe-shadow: rgba(56,189,248,0.08);
+
+  /* logo glow (night) */
+  --ge-logo-shadow: rgba(56,189,248,0.45);
 }
 
 html[data-theme="day"] {
@@ -71,6 +75,10 @@ html[data-theme="day"] {
   --ge-globe-sheen: rgba(255,255,255,0.35);
   --ge-globe-ring: rgba(37,99,235,0.10);
   --ge-globe-shadow: rgba(37,99,235,0.12);
+
+  /* logo glow (day) */
+  /* use a darker navy-ish tone so the shadow reads dark against the light header */
+  --ge-logo-shadow: rgba(15,23,42,0.55);
 }
 
 html, body, #root {
