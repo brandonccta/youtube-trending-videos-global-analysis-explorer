@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import { fetchCategoryTrendingOverTime, fetchTopVideosOverTime } from '../api/countries';
+import { fetchCategoryTrendingOverTime, fetchTopVideosOverTime } from '../services/countries';
 import { CATEGORY_COLORS, DEFAULT_CAT } from './Sidebar';
 
 const CATEGORY_LINE_COLORS = {

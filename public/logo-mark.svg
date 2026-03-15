@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+  <!-- Outer glow ring -->
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.95" />
+      <stop offset="45%" stop-color="#0ea5e9" stop-opacity="0.7" />
+      <stop offset="100%" stop-color="#020617" stop-opacity="0" />
+    </radialGradient>
+    <!-- Sphere gradient approximating reference (bright top, darker lower-right) -->
+    <radialGradient id="sphere" cx="30%" cy="18%" r="78%">
+      <stop offset="0%" stop-color="#9bf6ff" />
+      <stop offset="30%" stop-color="#7dd3fc" />
+      <stop offset="55%" stop-color="#38bdf8" />
+      <stop offset="80%" stop-color="#0ea5e9" />
+      <stop offset="100%" stop-color="#075985" />
+    </radialGradient>
+    <linearGradient id="waveLight" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#e0faff" />
+      <stop offset="40%" stop-color="#7dd3fc" />
+      <stop offset="100%" stop-color="#22c1f1" />
+    </linearGradient>
+    <linearGradient id="waveMid" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="45%" stop-color="#0ea5e9" />
+      <stop offset="100%" stop-color="#0369a1" />
+    </linearGradient>
+    <linearGradient id="waveDark" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#082f49" />
+      <stop offset="45%" stop-color="#0b395b" />
+      <stop offset="100%" stop-color="#022c43" />
+    </linearGradient>
+  </defs>
+
+  <!-- Soft outer glow -->
+  <circle cx="48" cy="48" r="46" fill="url(#glow)" opacity="0.85" />
+
+  <!-- Core sphere -->
+  <circle cx="48" cy="48" r="34" fill="url(#sphere)" />
+
+  <!-- Top wavy band (thick S-shaped crest) -->
+  <path
+    d="M18 32
+       C24 26, 32 22, 41 21
+       C49 20, 56 21, 63 24
+       C60 26.5, 57 27.8, 53.5 28.7
+       C49 30, 45 30.3, 40.5 30.2
+       C35 30, 30.5 29.1, 26 28.3
+       C22.5 27.7, 20 27.7, 18 28Z"
+    fill="url(#waveLight)"
+  />
+
+  <!-- Dark shadow under top band -->
+  <path
+    d="M20 34
+       C24 32.8, 28 32.2, 33 32.3
+       C38 32.4, 42.5 33.1, 47 34.3
+       C50 35.1, 53 36.2, 56 37.8
+       C53 39.5, 49 40.6, 44.5 41
+       C40 41.4, 35.5 41, 31.5 40.1
+       C27.5 39.3, 23.5 37.9, 20 36Z"
+    fill="url(#waveDark)"
+    opacity="0.85"
+  />
+
+  <!-- Middle wavy band -->
+  <path
+    d="M18 42
+       C23.5 39, 30 37, 37 36.3
+       C44 35.6, 50.5 36, 57 37.4
+       C61 38.3, 65 39.8, 69 42
+       C66.5 44.7, 63 46.5, 58.5 47.9
+       C53 49.6, 48 50.4, 42.5 50.5
+       C37 50.6, 32 50.1, 27.5 48.9
+       C23.5 47.9, 20.5 46.3, 18 44.7Z"
+    fill="url(#waveMid)"
+  />
+
+  <!-- Dark shadow under middle band -->
+  <path
+    d="M20 50
+       C24.5 48.8, 29 48.2, 34 48.3
+       C39 48.4, 43.5 49.1, 48 50.3
+       C51 51.1, 54 52.2, 57 53.8
+       C54 55.5, 50.5 56.7, 46.5 57.3
+       C42 58, 38 57.8, 33.5 57
+       C29.5 56.3, 24.5 54.9, 20 53Z"
+    fill="url(#waveDark)"
+    opacity="0.9"
+  />
+
+  <!-- Bottom wavy band -->
+  <path
+    d="M22 56
+       C27 58.3, 32 59.7, 38 60.5
+       C44 61.4, 49.5 61.4, 55 60.5
+       C59.5 59.7, 63.5 58.3, 68 56
+       C66.3 59.7, 63.7 62.9, 60.2 65.5
+       C55.5 68.9, 50 70.5, 44 70.5
+       C38 70.5, 33 69, 29 66.6
+       C26 64.9, 23.8 62.7, 22 60.2Z"
+    fill="url(#waveDark)"
+  />
+
+  <!-- Highlight streaks on bands -->
+  <path
+    d="M25 29.5
+       C30 27, 35 25.8, 40.5 25.6
+       C45 25.4, 49 26, 53 27"
+    fill="none"
+    stroke="#e0faff"
+    stroke-width="1.4"
+    stroke-linecap="round"
+    opacity="0.7"
+  />
+  <path
+    d="M24 43.8
+       C28.5 42.4, 33 41.8, 38 41.8
+       C42.5 41.8, 46.5 42.3, 50.5 43.2"
+    fill="none"
+    stroke="#a5f3fc"
+    stroke-width="1.3"
+    stroke-linecap="round"
+    opacity="0.65"
+  />
+  <path
+    d="M26 57.2
+       C30 56.2, 34 55.8, 38.5 56
+       C42 56.1, 45.5 56.6, 49 57.4"
+    fill="none"
+    stroke="#7dd3fc"
+    stroke-width="1.2"
+    stroke-linecap="round"
+    opacity="0.6"
+  />
+</svg>
+
