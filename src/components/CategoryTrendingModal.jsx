@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { fetchCategoryTrendingOverTime, fetchTopVideosOverTime } from '../services/countries';
+import { formatViews } from '../utils/formatNumber';
 import { CATEGORY_COLORS, DEFAULT_CAT } from './Sidebar';
 
 const CATEGORY_LINE_COLORS = {
@@ -17,11 +18,69 @@ const colorForCategory = (category) =>
   (CATEGORY_COLORS[category]?.text) ||
   DEFAULT_CAT.text;
 
-// normalize date to YYYY-MM-DD format for consistent key matching
+// Wrap long title into multiple lines (by approximate width); returns array of lines
+function wrapTitle(text, maxWidthPx, fontSize = 16) {
+  const approxCharWidth = fontSize * 0.55;
+  const maxCharsPerLine = Math.max(20, Math.floor(maxWidthPx / approxCharWidth));
+  const words = String(text).split(/\s+/);
+  const lines = [];
+  let line = '';
+  for (const word of words) {
+    const next = line ? `${line} ${word}` : word;
+    if (next.length <= maxCharsPerLine) {
+      line = next;
+    } else {
+      if (line) lines.push(line);
+      line = word.length > maxCharsPerLine ? word.match(new RegExp(`.{1,${maxCharsPerLine}}`, 'g')).join('\n') : word;
+    }
+  }
+  if (line) lines.push(line);
+  return lines.flatMap(l => l.includes('\n') ? l.split('\n') : [l]);
+}
+
+// Add chart title to D3 group (single line or wrapped for narrow viewports)
+function addChartTitle(g, title, width, isNarrow) {
+  const textEl = g.append('text')
+    .attr('x', width / 2)
+    .attr('y', -15)
+    .attr('text-anchor', 'middle')
+    .style('fill', 'var(--color-ge-text)')
+    .style('font-size', '16px')
+    .style('font-family', 'var(--font-display)')
+    .style('font-weight', 'bold');
+  if (isNarrow) {
+    const titleLines = wrapTitle(title, width, 16);
+    titleLines.forEach((line, i) => {
+      textEl.append('tspan')
+        .attr('x', width / 2)
+        .attr('dy', i === 0 ? 0 : '1.2em')
+        .text(line);
+    });
+  } else {
+    textEl.text(title);
+  }
+}
+
+// normalize date to yyyy-mm-dd format for consistent key matching
 const normalizeDate = (dateStr) => {
   if (!dateStr) return '';
-  // extract date part from ISO string or use as-is if already in YYYY-MM-DD format
+  // extract date part from iso string or use as-is if already in yyyy-mm-dd format
   return String(dateStr).split('T')[0];
+};
+
+// Format ISO 8601 duration (e.g. PT4M2S, PT1H1M39S) to human-readable (e.g. "4m 2s", "1h 1m 39s")
+const formatVideoDuration = (isoDuration) => {
+  if (isoDuration == null || isoDuration === '') return null;
+  const str = String(isoDuration).trim().toUpperCase();
+  if (!str.startsWith('PT')) return isoDuration;
+  const hours = str.match(/(\d+)H/)?.[1];
+  const minutes = str.match(/(\d+)M/)?.[1];
+  const seconds = str.match(/(\d+)S/)?.[1];
+  const parts = [];
+  if (hours) parts.push(`${hours}h`);
+  if (minutes) parts.push(`${minutes}m`);
+  if (seconds) parts.push(`${seconds}s`);
+  return parts.length ? parts.join(' ') : isoDuration;
 };
 
 // Parse top5_tags from TEXT column (handles JSON arrays, pipe-separated strings, or arrays)
@@ -30,7 +89,7 @@ const parseTags = (tagsRaw) => {
     return [];
   }
   
-  // If already an array, filter and return
+  // if already an array, filter and return
   if (Array.isArray(tagsRaw)) {
     return tagsRaw
       .filter(t => t != null && String(t).trim())
@@ -38,12 +97,12 @@ const parseTags = (tagsRaw) => {
       .filter(t => t.length > 0);
   }
   
-  // If string, try to parse as JSON first, then fall back to pipe-separated
+  // if string, try to parse as json first, then fall back to pipe-separated
   if (typeof tagsRaw === 'string') {
     const trimmed = tagsRaw.trim();
     if (!trimmed) return [];
     
-    // Try parsing as JSON array (e.g., '["tag1","tag2"]')
+    // try parsing as json array (e.g., '["tag1","tag2"]')
     if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
       try {
         const parsed = JSON.parse(trimmed);
@@ -54,11 +113,11 @@ const parseTags = (tagsRaw) => {
             .filter(t => t.length > 0);
         }
       } catch (e) {
-        // Not valid JSON, fall through to pipe-separated parsing
+        // not valid json, fall through to pipe-separated parsing
       }
     }
     
-    // Fall back to pipe-separated string (e.g., 'tag1|tag2|tag3')
+    // fall back to pipe-separated string (e.g., 'tag1|tag2|tag3')
     return trimmed
       .split('|')
       .map(s => s.trim())
@@ -80,10 +139,10 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
   const spinnerDelayRef = useRef(null);
   const [showSpinner, setShowSpinner] = useState(false);
   const [maxSelected, setMaxSelected] = useState(3);
-  // Keep order so we can evict oldest when exceeding maxSelected
+  // keep order so we can evict oldest when exceeding maxSelected
   const [selectedKeys, setSelectedKeys] = useState([]); // ["<category>|<dateStr>" or "<dateStr>", ...]
   
-  // Use appropriate data based on active tab
+  // use appropriate data based on active tab
   const data = activeTab === 'categories' ? categoryData : videoData;
 
   const topCategories = useMemo(() => {
@@ -108,21 +167,21 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
       const set = new Set(topCategories);
       return categoryData.filter(d => set.has(d.category));
     } else {
-      // For videos tab, return all video data
+      // for videos tab, return all video data
       return videoData || [];
     }
   }, [categoryData, videoData, topCategories, activeTab]);
 
-  // Implicit cap: how many selectable dots exist on the chart right now
+  // implicit cap: how many selectable dots exist on the chart right now
   const maxSelectableDots = useMemo(() => {
-    // Each row corresponds to one dot (category + month)
+    // each row corresponds to one dot (category + month)
     return filteredData.length;
   }, [filteredData]);
 
   const selectedKeySet = useMemo(() => new Set(selectedKeys), [selectedKeys]);
 
   const parsedTags = useMemo(() => {
-    if (activeTab !== 'categories') return new Map(); // Only categories have tags
+    if (activeTab !== 'categories') return new Map(); // only categories have tags
     const map = new Map(); // key => tags[]
     for (const row of filteredData) {
       const dateKey = normalizeDate(row.date);
@@ -172,7 +231,7 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
         })
         .filter(Boolean);
     } else {
-      // For videos tab
+      // for videos tab
       const byKey = new Map(filteredData.map(r => {
         const dateKey = normalizeDate(r.date);
         return [dateKey, r];
@@ -223,7 +282,7 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
       setShowSpinner(true);
     }, 180);
 
-    // Fetch both datasets in parallel
+    // fetch both datasets in parallel
     Promise.all([
       fetchCategoryTrendingOverTime(countryName),
       fetchTopVideosOverTime(countryName)
@@ -263,30 +322,36 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
     setSelectedKeys([]);
   }, [isOpen, countryName, activeTab]);
 
-  // Keep maxSelected within the implicit cap (and >= 1)
+  // keep maxSelected within the implicit cap (and >= 1)
   useEffect(() => {
     const cap = Math.max(1, maxSelectableDots || 1);
     setMaxSelected((prev) => Math.max(1, Math.min(cap, Number(prev) || 1)));
   }, [maxSelectableDots]);
 
-  // If the implicit cap shrinks, trim selected keys to fit
+  // if the implicit cap shrinks, trim selected keys to fit
   useEffect(() => {
     const cap = Math.max(1, maxSelectableDots || 1);
     setSelectedKeys((prev) => (prev.length <= cap ? prev : prev.slice(prev.length - cap)));
   }, [maxSelectableDots]);
 
   useEffect(() => {
-    if (!isOpen || !filteredData.length || !svgRef.current) return;
+    if (!isOpen || !filteredData.length || !svgRef.current || !wrapRef.current) return;
 
-    const margin = { top: 40, right: 24, bottom: 60, left: 80 };
     const containerW =
       chartWrapRef.current?.clientWidth ||
       svgRef.current?.parentElement?.clientWidth ||
       900;
+    // treat "narrow" as matching our css/mobile breakpoint (viewport width),
+    // not just the chart container width (which is capped on desktop).
+    const isNarrow =
+      typeof window !== 'undefined' ? window.innerWidth <= 900 : containerW <= 900;
+    const margin = isNarrow
+      ? { top: 52, right: 24, bottom: 72, left: 80 }
+      : { top: 40, right: 24, bottom: 60, left: 80 };
     const width = Math.max(320, containerW) - margin.left - margin.right;
     const height = 500 - margin.top - margin.bottom;
 
-    // Clear previous chart
+    // clear previous chart
     d3.select(svgRef.current).selectAll('*').remove();
 
     const svg = d3.select(svgRef.current)
@@ -296,14 +361,14 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
     const g = svg.append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
 
-    // Parse dates
+    // parse dates
     const parseDate = (dateStr) => {
       if (!dateStr) return null;
       const dateOnly = String(dateStr).split('T')[0];
       return d3.timeParse('%Y-%m-%d')(dateOnly);
     };
 
-    // Set up scales
+    // set up scales
     const allDates = filteredData.map(d => {
       const dateOnly = d.date ? String(d.date).split('T')[0] : null;
       return d3.timeParse('%Y-%m-%d')(dateOnly);
@@ -317,27 +382,37 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
       .domain([0, maxValue * 1.1])
       .range([height, 0]);
 
-    // Create line generator (only for categories)
+    // create line generator (only for categories)
     const line = d3.line()
       .x(d => xScale(d.date))
       .y(d => yScale(d.value))
       .curve(d3.curveMonotoneX);
 
-    // Add axes
+    // add axes
     const xAxis = d3.axisBottom(xScale)
-      .ticks(d3.timeMonth.every(2))
+      .ticks(isNarrow ? Math.min(8, Math.max(5, Math.floor(width / 80))) : d3.timeMonth.every(2))
       .tickFormat(d3.timeFormat('%Y-%m'));
-    
+
+    const xAxisG = g.append('g')
+      .attr('transform', `translate(0,${height})`)
+      .call(xAxis);
+
+    xAxisG.selectAll('text')
+      .style('fill', 'var(--color-ge-text)')
+      .style('font-size', '11px')
+      .each(function() {
+        if (isNarrow) {
+          d3.select(this)
+            .attr('transform', 'rotate(-25)')
+            .attr('text-anchor', 'end')
+            .attr('dx', '-0.4em')
+            .attr('dy', '0.35em');
+        }
+      });
+
     const yAxis = d3.axisLeft(yScale)
       .ticks(8)
       .tickFormat(d => d >= 1000 ? `${(d / 1000).toFixed(0)}K` : d);
-
-    g.append('g')
-      .attr('transform', `translate(0,${height})`)
-      .call(xAxis)
-      .selectAll('text')
-      .style('fill', 'var(--color-ge-text)')
-      .style('font-size', '11px');
 
     g.append('g')
       .call(yAxis)
@@ -345,7 +420,7 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
       .style('fill', 'var(--color-ge-text)')
       .style('font-size', '11px');
 
-    // Add axis labels
+    // add axis labels
     g.append('text')
       .attr('transform', 'rotate(-90)')
       .attr('y', -50)
@@ -365,7 +440,7 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
       .style('font-family', 'var(--font-display)')
       .text('Date');
 
-    // Tooltip (HTML overlay)
+    // tooltip (html overlay)
     const tooltip = d3.select(wrapRef.current)
       .append('div')
       .attr('class', 'ge-chart-tip')
@@ -381,15 +456,10 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
       .style('z-index', 60);
 
     const fmtMonth = d3.timeFormat('%Y-%m');
-    const fmtNumber = (n) => n >= 1000000 ? `${(n / 1000000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}K` : n;
 
     const showTip = (event, d, category, color, isVideo = false) => {
       if (isVideo) {
-        // Video tooltip - match dimensions of categories tooltip
-        const rawDateStr = d.raw?.date;
-        const dateKey = normalizeDate(rawDateStr);
-        const key = dateKey;
-        
+        // video tooltip - match dimensions of categories tooltip
         tooltip
           .style('opacity', 1)
           .html(`
@@ -407,16 +477,16 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
             </div>
             <div style="color:var(--color-ge-dim);font-size:10px;margin-bottom:4px;">
               Channel: <span style="color:var(--color-ge-text);">${d.raw?.channel_title || '—'}</span> | 
-              Category: <span style="color:var(--color-ge-text);">${category || '—'}</span>
+              Duration: <span style="color:var(--color-ge-text);">${formatVideoDuration(d.raw?.video_duration) ?? '—'}</span>
             </div>
             <div style="color:var(--color-ge-dim);font-size:10px;">
-              Views: <span style="color:var(--color-ge-text);font-weight:700;">${fmtNumber(Number(d.raw?.video_view_count) || 0)}</span> | 
-              Likes: <span style="color:var(--color-ge-text);">${fmtNumber(Number(d.raw?.video_like_count) || 0)}</span> | 
-              Comments: <span style="color:var(--color-ge-text);">${fmtNumber(Number(d.raw?.video_comment_count) || 0)}</span>
+              Views: <span style="color:var(--color-ge-text);font-weight:700;">${formatViews(Number(d.raw?.video_view_count) || 0)}</span> | 
+              Likes: <span style="color:var(--color-ge-text);">${formatViews(Number(d.raw?.video_like_count) || 0)}</span> | 
+              Comments: <span style="color:var(--color-ge-text);">${formatViews(Number(d.raw?.video_comment_count) || 0)}</span>
             </div>
           `);
       } else {
-        // Category tooltip
+        // category tooltip
         const rawDateStr = d.raw?.date;
         const dateKey = normalizeDate(rawDateStr);
         const key = `${category}|${dateKey}`;
@@ -492,13 +562,13 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
         });
       });
 
-      // Sort each category's data by date
+      // sort each category's data by date
       Object.keys(dataByCategory).forEach(cat => {
         dataByCategory[cat].sort((a, b) => a.date - b.date);
       });
 
-      // Draw lines for each category
-      // Original size is 4, selected should be 2x = 8
+      // draw lines for each category
+      // original size is 4, selected should be 2x = 8
       const baseRadius = 4;
       const selectedRadius = baseRadius * 2; // 8
       
@@ -507,7 +577,7 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
         const color = colorForCategory(category);
         const pathData = dataByCategory[category];
         
-        // Draw line
+        // draw line
         g.append('path')
           .datum(pathData)
           .attr('fill', 'none')
@@ -515,7 +585,7 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
           .attr('stroke-width', 2.5)
           .attr('d', line);
 
-        // Draw circles at data points
+        // draw circles at data points
         g.selectAll(`.dot-${i}`)
           .data(pathData)
           .enter()
@@ -549,16 +619,7 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
           });
       });
 
-      // Add title
-      g.append('text')
-        .attr('x', width / 2)
-        .attr('y', -15)
-        .attr('text-anchor', 'middle')
-        .style('fill', 'var(--color-ge-text)')
-        .style('font-size', '16px')
-        .style('font-family', 'var(--font-display)')
-        .style('font-weight', 'bold')
-        .text(`Category Trending Appearances Over Time — ${countryName}`);
+      addChartTitle(g, `Top Trending Categories Over Time — ${countryName}`, width, isNarrow);
     } else {
       // Videos tab: draw single points only (no lines)
       const videoPoints = filteredData.map(d => {
@@ -572,8 +633,8 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
         };
       }).filter(Boolean);
 
-      // Draw circles for each video point
-      // Original size is 4, selected should be 2x = 8
+      // draw circles for each video point
+      // original size is 4, selected should be 2x = 8
       const baseRadius = 4;
       const selectedRadius = baseRadius * 2; // 8
       
@@ -608,23 +669,15 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
           });
       });
 
-      // Add title
-      g.append('text')
-        .attr('x', width / 2)
-        .attr('y', -15)
-        .attr('text-anchor', 'middle')
-        .style('fill', 'var(--color-ge-text)')
-        .style('font-size', '16px')
-        .style('font-family', 'var(--font-display)')
-        .style('font-weight', 'bold')
-        .text(`Top Trending Videos Over Time — ${countryName}`);
+      addChartTitle(g, `Top Trending Videos Over Time — ${countryName}`, width, isNarrow);
     }
 
     return () => {
-      // cleanup tooltip DOM
-      d3.select(wrapRef.current).selectAll('.ge-chart-tip').remove();
+      if (wrapRef.current) {
+        d3.select(wrapRef.current).selectAll('.ge-chart-tip').remove();
+      }
     };
-  }, [filteredData, isOpen, countryName, maxSelected, parsedTags, selectedKeySet, activeTab, videoCategories]);
+  }, [filteredData, isOpen, countryName, maxSelected, parsedTags, selectedKeySet, activeTab]);
 
   if (!isOpen) return null;
 
@@ -750,11 +803,11 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
               </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex flex-col lg:flex-row gap-4 lg:items-start">
               {/* Left: legend + chart */}
-              <div className="min-w-0 flex-1" ref={chartWrapRef}>
+              <div className="min-w-0 flex-1 lg:flex lg:flex-col" ref={chartWrapRef}>
                 {activeTab === 'categories' && topCategories.length > 0 && (
-                  <div className="mb-3 flex flex-wrap gap-x-4 gap-y-2">
+                  <div className="mb-3 flex flex-wrap gap-x-4 gap-y-2 shrink-0">
                     {topCategories.map((cat) => (
                       <div key={cat} className="flex items-center gap-2">
                         <span
@@ -769,7 +822,7 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
                   </div>
                 )}
                 {activeTab === 'videos' && videoCategories.length > 0 && (
-                  <div className="mb-3 flex flex-wrap gap-x-4 gap-y-2">
+                  <div className="mb-3 flex flex-wrap gap-x-4 gap-y-2 shrink-0">
                     {videoCategories.map((cat) => (
                       <div key={cat} className="flex items-center gap-2">
                         <span
@@ -784,12 +837,12 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
                   </div>
                 )}
 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto shrink-0">
                   <svg ref={svgRef} className="w-full" />
                 </div>
               </div>
 
-              {/* Right: selected cards (vertical stack) */}
+              {/* Right: selected points; compact until overflow, then scroll area max height aligns bottom with chart (desktop) */}
               <aside className="lg:w-80 shrink-0">
                 <div className="text-[0.56rem] tracking-[0.16em] uppercase text-ge-muted mb-2">
                   Selected points
@@ -800,8 +853,10 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
                     Click dots to pin multiple points here.
                   </div>
                 ) : (
-                  <div className="bg-ge-surface border border-ge-border rounded-lg p-2 max-h-[420px] overflow-y-auto flex flex-col gap-2">
-                    {selectedCards.map((s) => (
+                  <div className="ge-modal-selected-cards bg-ge-surface border border-ge-border rounded-lg p-2 max-h-[420px] lg:max-h-[510px] overflow-y-auto flex flex-col gap-2">
+                    {selectedCards.map((s) => {
+                      const durationStr = s.video_duration != null ? formatVideoDuration(s.video_duration) : null;
+                      return (
                       <div
                         key={s.key}
                         className="bg-ge-panel/20 border border-ge-border rounded-lg p-3"
@@ -835,15 +890,20 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
 
                         {activeTab === 'videos' ? (
                           <>
-                            {s.channel_title && (
-                              <div className="mt-2 text-[0.65rem] text-ge-dim">
-                                Channel: <span className="text-ge-text">{s.channel_title}</span>
+                            {(s.channel_title || durationStr) && (
+                              <div className="mt-2 text-[0.65rem] text-ge-dim flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                                {s.channel_title && (
+                                  <span>Channel: <span className="text-ge-text">{s.channel_title}</span></span>
+                                )}
+                                {durationStr && (
+                                  <span>Duration: <span className="text-ge-text">{durationStr}</span></span>
+                                )}
                               </div>
                             )}
                             <div className="mt-1 text-[0.65rem] text-ge-dim flex items-center gap-3">
-                              <span>Views: <span className="text-ge-text font-semibold">{s.video_view_count >= 1000000 ? `${(s.video_view_count / 1000000).toFixed(1)}M` : s.video_view_count >= 1000 ? `${(s.video_view_count / 1000).toFixed(1)}K` : s.video_view_count}</span></span>
-                              <span>Likes: <span className="text-ge-text">{s.video_like_count >= 1000 ? `${(s.video_like_count / 1000).toFixed(1)}K` : s.video_like_count}</span></span>
-                              <span>Comments: <span className="text-ge-text">{s.video_comment_count >= 1000 ? `${(s.video_comment_count / 1000).toFixed(1)}K` : s.video_comment_count}</span></span>
+                              <span>Views: <span className="text-ge-text font-semibold">{formatViews(s.video_view_count)}</span></span>
+                              <span>Likes: <span className="text-ge-text">{formatViews(s.video_like_count)}</span></span>
+                              <span>Comments: <span className="text-ge-text">{formatViews(s.video_comment_count)}</span></span>
                             </div>
                           </>
                         ) : (
@@ -859,7 +919,7 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
                           </div>
                         )}
                       </div>
-                    ))}
+                    ); })}
                   </div>
                 )}
               </aside>

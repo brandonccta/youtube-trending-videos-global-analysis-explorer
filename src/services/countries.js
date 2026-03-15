@@ -2,8 +2,8 @@ const API_BASE = import.meta.env.VITE_API_BASE ?? '';
 
 /**
  * Helper function to handle API error responses consistently
- * @param {Response} res - Fetch response object
- * @returns {Promise<string>} Error message
+ * @param {Response} res - fetch response object
+ * @returns {Promise<string>} error message
  */
 async function getErrorMessage(res) {
   let errorMessage = `${res.status} ${res.statusText}`;
@@ -19,14 +19,15 @@ async function getErrorMessage(res) {
 /**
  * Fetch top YouTube channels for a country by name.
  * @param {string} countryName - e.g. "United States", "Japan"
+ * @param {{ signal?: AbortSignal }} [options]
  * @returns {Promise<object[]>}
  */
-export async function fetchTopChannels(countryName) {
+export async function fetchTopChannels(countryName, { signal } = {}) {
   if (!countryName) return [];
   const url = `${API_BASE}/api/country/top_channels?country=${encodeURIComponent(
     countryName,
   )}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
   return res.json();
 }
@@ -34,14 +35,15 @@ export async function fetchTopChannels(countryName) {
 /**
  * Fetch top YouTube categories for a country by name.
  * @param {string} countryName - e.g. "United States", "Japan"
+ * @param {{ signal?: AbortSignal }} [options]
  * @returns {Promise<object[]>}
  */
-export async function fetchTopCategories(countryName) {
+export async function fetchTopCategories(countryName, { signal } = {}) {
   if (!countryName) return [];
   const url = `${API_BASE}/api/country/top_categories?country=${encodeURIComponent(
     countryName,
   )}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
   return res.json();
 }
@@ -49,14 +51,15 @@ export async function fetchTopCategories(countryName) {
 /**
  * Fetch top YouTube videos for a country by name.
  * @param {string} countryName - e.g. "United States", "Japan"
+ * @param {{ signal?: AbortSignal }} [options]
  * @returns {Promise<object[]>}
  */
-export async function fetchTopVideos(countryName) {
+export async function fetchTopVideos(countryName, { signal } = {}) {
   if (!countryName) return [];
   const url = `${API_BASE}/api/country/top_videos?country=${encodeURIComponent(
     countryName,
   )}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
   return res.json();
 }
@@ -64,15 +67,15 @@ export async function fetchTopVideos(countryName) {
 /**
  * Fetch category trending appearances over time for a country.
  * @param {string} countryName - e.g. "United States", "Japan"
- * @returns {Promise<object[]>} Array of { date, category, trending_appearances }
+ * @returns {Promise<object[]>} array of { date, category, trending_appearances }
  */
 export async function fetchCategoryTrendingOverTime(countryName) {
   if (!countryName) return [];
   const url = `${API_BASE}/api/query`;
-  // Escape single quotes in country name to prevent SQL injection
+  // escape single quotes in country name to prevent sql injection
   const escapedCountryName = countryName.replace(/'/g, "''");
 
-  // Monthly time-series lives in category_trends_over_time
+  // monthly time-series lives in category_trends_over_time
   const sql = `
     SELECT
       TO_CHAR(
@@ -107,15 +110,15 @@ export async function fetchCategoryTrendingOverTime(countryName) {
 /**
  * Fetch top video over time for a country.
  * @param {string} countryName - e.g. "United States", "Japan"
- * @returns {Promise<object[]>} Array of { date, video_title, category, channel_title, video_view_count, video_like_count, video_comment_count, trending_appearances }
+ * @returns {Promise<object[]>} array of { date, video_title, category, channel_title, video_view_count, video_like_count, video_comment_count, trending_appearances }
  */
 export async function fetchTopVideosOverTime(countryName) {
   if (!countryName) return [];
   const url = `${API_BASE}/api/query`;
-  // Escape single quotes in country name to prevent SQL injection
+  // escape single quotes in country name to prevent sql injection
   const escapedCountryName = countryName.replace(/'/g, "''");
 
-  // Monthly time-series lives in video_trends_over_time
+  // monthly time-series lives in video_trends_over_time
   const sql = `
     SELECT
       TO_CHAR(

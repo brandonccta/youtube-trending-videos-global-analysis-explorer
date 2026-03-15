@@ -2,21 +2,16 @@ import { useEffect, useState } from 'react';
 import { THEME_MODE } from '../theme/theme';
 import { useTheme } from '../theme/ThemeProvider';
 
-const OPTIONS = [
-  { mode: THEME_MODE.DAY, label: 'Light' },
-  { mode: THEME_MODE.NIGHT, label: 'Dark' },
-];
-
 export default function ThemeToggle() {
   const { mode, setMode, resolvedTheme } = useTheme();
   const [hasMounted, setHasMounted] = useState(false);
 
-  // Avoid transition animation on initial page load; enable after first paint.
+  // avoid transition animation on initial page load; enable after first paint.
   useEffect(() => {
     setHasMounted(true);
   }, []);
 
-  // When mode is AUTO, visually reflect the currently resolved theme.
+  // when mode is auto, visually reflect the currently resolved theme.
   const displayMode =
     mode === THEME_MODE.AUTO ? resolvedTheme : mode;
 
@@ -27,9 +22,6 @@ export default function ThemeToggle() {
 
   return (
     <div className="flex items-center gap-2 shrink-0">
-      <div className="hidden md:block text-[0.56rem] tracking-[0.14em] uppercase text-ge-muted">
-      </div>
-
       <button
         type="button"
         onClick={() => {

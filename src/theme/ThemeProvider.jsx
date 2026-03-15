@@ -17,7 +17,7 @@ function useAutoThemeTimer({ enabled, timeZone, onTick }) {
 
     const tick = () => onTickRef.current?.();
 
-    // Tick immediately, then align to the next minute boundary for stability.
+    // tick immediately, then align to the next minute boundary for stability.
     tick();
     const now = new Date();
     const msToNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
@@ -36,27 +36,27 @@ function useAutoThemeTimer({ enabled, timeZone, onTick }) {
 }
 
 export function ThemeProvider({ children }) {
-  // Always start in AUTO on each page load; do not persist mode across reloads.
+  // always start in auto on each page load; do not persist mode across reloads.
   const [mode, setMode] = useState(THEME_MODE.AUTO); // 'auto' | 'day' | 'night'
   const [timeZone] = useState(() => getSystemTimeZone());
   const [resolvedTheme, setResolvedTheme] = useState(() => {
     return mode === THEME_MODE.AUTO ? resolveThemeFromTime({ timeZone }) : mode;
   });
 
-  // Keep resolved theme updated if mode changes.
+  // keep resolved theme updated if mode changes.
   useEffect(() => {
     const nextResolved = mode === THEME_MODE.AUTO ? resolveThemeFromTime({ timeZone }) : mode;
     setResolvedTheme(nextResolved);
   }, [mode, timeZone]);
 
-  // Auto timer only when mode === auto
+  // auto timer only when mode === auto
   useAutoThemeTimer({
     enabled: mode === THEME_MODE.AUTO,
     timeZone,
     onTick: () => setResolvedTheme(resolveThemeFromTime({ timeZone })),
   });
 
-  // Apply to DOM. Use layout effect so the correct theme is set
+  // apply to dom. use layout effect so the correct theme is set
   // before the browser paints, avoiding a dark→light flicker.
   useLayoutEffect(() => {
     applyResolvedThemeToDom(resolvedTheme);

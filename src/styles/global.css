@@ -2,7 +2,7 @@
 @import "flag-icons/css/flag-icons.min.css";
 
 @theme {
-  /* ── Custom color palette ── */
+  /* Colors */
   --color-ge-bg:       #04080f;
   --color-ge-panel:    #080d18;
   --color-ge-surface:  #0d1526;
@@ -17,17 +17,17 @@
   --color-ge-muted:    #4a6080;
   --color-ge-indigo:   #818cf8;
 
-  /* ── Custom fonts ── */
+  /* Fonts */
   --font-display: 'Outfit', sans-serif;
   --font-mono:    'JetBrains Mono', monospace;
 }
 
-/* Theme variables (used by components + Tailwind theme tokens above) */
+/* Theme vars (components + Tailwind) */
 :root {
-  /* default to night */
+  /* Night */
   --ge-globe-bg: radial-gradient(ellipse at 40% 40%, #070f1e, #02050a);
   --ge-globe-stars-opacity: 1;
-  /* globe styling (night defaults) */
+  /* Globe (night) */
   --ge-globe-ocean-0: #0d2545;
   --ge-globe-ocean-1: #040d1e;
   --ge-globe-land: #1a3a5c;
@@ -40,12 +40,11 @@
   --ge-globe-ring: rgba(56,189,248,0.06);
   --ge-globe-shadow: rgba(56,189,248,0.08);
 
-  /* logo glow (night) */
   --ge-logo-shadow: rgba(56,189,248,0.45);
 }
 
 html[data-theme="day"] {
-  /* day palette overrides */
+  /* Day palette */
   --color-ge-bg:       #f6f9ff;
   --color-ge-panel:    #eef4ff;
   --color-ge-surface:  #ffffff;
@@ -62,12 +61,11 @@ html[data-theme="day"] {
 
   --ge-globe-bg: radial-gradient(ellipse at 40% 40%, #cfe8ff, #eef7ff);
   --ge-globe-stars-opacity: 0.15;
-  /* globe styling (day overrides) */
-  /* "inverse-ish" of night: unselected countries are lighter, selected countries are darker */
+  /* Globe (day): lighter land, darker selected */
   --ge-globe-ocean-0: #a8d7ff;
   --ge-globe-ocean-1: #eef7ff;
-  --ge-globe-land: #8ecbff;          /* unselected */
-  --ge-globe-land-active: #1e40af;   /* selected (darker) */
+  --ge-globe-land: #8ecbff;
+  --ge-globe-land-active: #1e40af;
   --ge-globe-land-hover: #2563eb;
   --ge-globe-stroke: rgba(11,18,32,0.25);
   --ge-globe-graticule: rgba(37,99,235,0.18);
@@ -76,8 +74,7 @@ html[data-theme="day"] {
   --ge-globe-ring: rgba(37,99,235,0.10);
   --ge-globe-shadow: rgba(37,99,235,0.12);
 
-  /* logo glow (day) */
-  /* use a darker navy-ish tone so the shadow reads dark against the light header */
+  /* Logo glow (day): dark shadow on light header */
   --ge-logo-shadow: rgba(15,23,42,0.55);
 }
 
@@ -90,7 +87,7 @@ html, body, #root {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Smooth theme transitions */
+/* Theme transitions */
 *,
 *::before,
 *::after {
@@ -111,8 +108,8 @@ html, body, #root {
 
 ::-webkit-scrollbar       { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #1a2a42; border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: #4a6080; }
+::-webkit-scrollbar-thumb { background: var(--color-ge-border); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-ge-muted); }
 
 @keyframes pulse     { 0%,100%{opacity:1} 50%{opacity:.2} }
 @keyframes spin      { to{transform:rotate(360deg)} }
@@ -144,12 +141,12 @@ html, body, #root {
 }
 
 /* Longer, symmetric timing for Explore More enter/exit.
-   For enter, explicitly start hidden and below so the delay period
+   for enter, explicitly start hidden and below so the delay period
    doesn't show a "static" button before the animation begins. */
 .animate-explore-enter {
   opacity: 0;
   transform: translateY(22px);
-  /* Remove delay so the button animates immediately when it appears. */
+  /* remove delay so the button animates immediately when it appears. */
   animation: exploreEnter 0.5s ease-out both;
 }
 
@@ -202,5 +199,83 @@ html, body, #root {
   }
   100% {
     transform: translateX(var(--scroll-distance, 0px));
+  }
+}
+
+/* Mobile (≤640px) */
+@media (max-width: 640px) {
+  .ge-main {
+    flex-direction: column;
+  }
+
+  .ge-main .ge-globe {
+    min-height: 260px;
+  }
+
+  .ge-main .ge-sidebar {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 0;
+    min-height: 0;
+    border-left: none;
+    border-top: 1px solid var(--color-ge-border);
+  }
+
+  .ge-main .ge-sidebar .ge-sidebar-body {
+    min-height: 0;
+    transition: opacity 0.2s ease-out;
+  }
+
+  .ge-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .ge-globe .ge-globe-hints {
+    width: 90% !important;
+    max-width: min(80vmin, 420px);
+    justify-content: space-between;
+    gap: 0;
+  }
+  .ge-globe .ge-globe-hints .ge-hint-item {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.125rem;
+    text-align: center;
+  }
+  .ge-globe .ge-globe-hints .ge-hint-emoji {
+    display: block;
+  }
+
+  .globe-explore-wrapper {
+    left: 65% !important;
+    transform: translateX(-50%) !important;
+    bottom: 1rem !important;
+    width: auto !important;
+    padding: 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+  }
+
+  .globe-explore-button {
+    width: auto !important;
+    max-width: 280px !important;
+    margin: 0 auto !important;
+    padding: 0.7rem 0.9rem !important;
+    font-size: 0.9rem !important;
+  }
+
+  .ge-modal-panel {
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+  .ge-modal-selected-cards {
+    max-height: min(40vh, 280px) !important;
+    overflow-y: auto !important;
   }
 }

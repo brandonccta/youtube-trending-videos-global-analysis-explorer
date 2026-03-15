@@ -1,5 +1,5 @@
 // Country list used for search autocomplete + fly-to coordinates.
-// `num` is the ISO 3166-1 numeric code (zero-padded to 3 digits) used by the TopoJSON world atlas.
+// `num` is the iso 3166-1 numeric code (zero-padded to 3 digits) used by the topojson world atlas.
 
 const COUNTRIES = [
   { name: 'Afghanistan',              iso: 'AFG', alpha2: 'AF', num: '004', lat:  33.9, lng:  67.7 },
