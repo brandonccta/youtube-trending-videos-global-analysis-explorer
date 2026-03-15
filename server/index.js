@@ -269,7 +269,7 @@ app.post("/api/query", async (req, res) => {
 });
 
 // health check
-app.get("/health", async (_req, res) => {
+app.get("/api/health", async (_req, res) => {
   try {
     await ensureDbInitialized();
     await pool.query("SELECT 1");
