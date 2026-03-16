@@ -24,9 +24,7 @@ async function getErrorMessage(res) {
  */
 export async function fetchTopChannels(countryName, { signal } = {}) {
   if (!countryName) return [];
-  const url = `${API_BASE}/api/country/top_channels?country=${encodeURIComponent(
-    countryName,
-  )}`;
+  const url = `${API_BASE}/api/country/top_channels?country=${encodeURIComponent(countryName)}`;
   const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
   return res.json();
@@ -40,9 +38,7 @@ export async function fetchTopChannels(countryName, { signal } = {}) {
  */
 export async function fetchTopCategories(countryName, { signal } = {}) {
   if (!countryName) return [];
-  const url = `${API_BASE}/api/country/top_categories?country=${encodeURIComponent(
-    countryName,
-  )}`;
+  const url = `${API_BASE}/api/country/top_categories?country=${encodeURIComponent(countryName)}`;
   const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
   return res.json();
@@ -56,9 +52,7 @@ export async function fetchTopCategories(countryName, { signal } = {}) {
  */
 export async function fetchTopVideos(countryName, { signal } = {}) {
   if (!countryName) return [];
-  const url = `${API_BASE}/api/country/top_videos?country=${encodeURIComponent(
-    countryName,
-  )}`;
+  const url = `${API_BASE}/api/country/top_videos?country=${encodeURIComponent(countryName)}`;
   const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
   return res.json();

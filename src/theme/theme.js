@@ -27,7 +27,7 @@ export function resolveThemeFromTime({ now = new Date(), timeZone }) {
     hour12: false,
   }).formatToParts(now);
 
-  const hourStr = parts.find(p => p.type === 'hour')?.value ?? '0';
+  const hourStr = parts.find((p) => p.type === 'hour')?.value ?? '0';
   const hour = Number(hourStr);
   const isDay = Number.isFinite(hour) && hour >= 6 && hour < 18;
   return isDay ? THEME_MODE.DAY : THEME_MODE.NIGHT;
