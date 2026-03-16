@@ -1,27 +1,40 @@
 import { useState, useCallback } from 'react';
 import SearchBar from './components/SearchBar';
 import GlobeView from './components/GlobeView';
-import Sidebar   from './components/Sidebar';
+import Sidebar from './components/Sidebar';
 import ThemeToggle from './components/ThemeToggle';
 import CategoryTrendingModal from './components/CategoryTrendingModal';
 import { useCountryData } from './hooks/useCountryData';
 
 export default function App() {
   const [sensitivity, setSensitivity] = useState(5); // 0-10 range, 5 is centered
-  const [flyTarget, setFlyTarget]     = useState(null);
-  const [showHints, setShowHints]     = useState(true);
-  const [showModal, setShowModal]     = useState(false);
+  const [flyTarget, setFlyTarget] = useState(null);
+  const [showHints, setShowHints] = useState(true);
+  const [showModal, setShowModal] = useState(false);
 
-  const { selectedIso, selectedName, channels, categories, videos, loading, error, selectCountry, clear } = useCountryData();
+  const {
+    selectedIso,
+    selectedName,
+    channels,
+    categories,
+    videos,
+    loading,
+    error,
+    selectCountry,
+    clear,
+  } = useCountryData();
 
   const dismissHints = useCallback(() => setShowHints(false), []);
   const closeModal = useCallback(() => setShowModal(false), []);
   const handleExploreMore = useCallback(() => setShowModal(true), []);
 
-  const handleSearchSelect = useCallback((country) => {
-    setFlyTarget({ lon: country.lng, lat: country.lat });
-    selectCountry(country.iso, country.name);
-  }, [selectCountry]);
+  const handleSearchSelect = useCallback(
+    (country) => {
+      setFlyTarget({ lon: country.lng, lat: country.lat });
+      selectCountry(country.iso, country.name);
+    },
+    [selectCountry]
+  );
 
   const handleSearchFocus = useCallback(() => {
     // clicking into the search bar should put you immediately into "new search" mode.
@@ -32,7 +45,8 @@ export default function App() {
 
   const handleFlyDone = useCallback(() => setFlyTarget(null), []);
 
-  const hasCountryData = !loading && !error && (channels.length > 0 || categories.length > 0 || videos.length > 0);
+  const hasCountryData =
+    !loading && !error && (channels.length > 0 || categories.length > 0 || videos.length > 0);
 
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden bg-ge-bg text-ge-text font-mono">
@@ -58,22 +72,22 @@ export default function App() {
           </div>
           <div className="flex items-center gap-2 text-[0.6rem] text-ge-muted whitespace-nowrap shrink-0 tracking-widest uppercase">
             <span className="w-1.5 h-1.5 rounded-full bg-ge-green animate-pulse-dot" />
-            {selectedName
-              ? `VIEWING · ${selectedName.toUpperCase()}`
-              : 'VIEWING · WORLD'}
+            {selectedName ? `VIEWING · ${selectedName.toUpperCase()}` : 'VIEWING · WORLD'}
           </div>
         </div>
 
         <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0 w-full sm:w-auto">
           <div className="flex items-center gap-2.5 shrink-0">
-            <span className="text-[0.58rem] uppercase tracking-widest text-ge-muted whitespace-nowrap">Sensitivity</span>
+            <span className="text-[0.58rem] uppercase tracking-widest text-ge-muted whitespace-nowrap">
+              Sensitivity
+            </span>
             <input
               type="range"
               min={0}
               max={10}
               step={1}
               value={sensitivity}
-              onChange={e => setSensitivity(Number(e.target.value))}
+              onChange={(e) => setSensitivity(Number(e.target.value))}
               className="w-20 h-[3px] appearance-none bg-ge-border rounded-full outline-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-ge-accent [&::-webkit-slider-thumb]:shadow-[0_0_8px_rgba(56,189,248,0.4)] [&::-webkit-slider-thumb]:cursor-pointer"
             />
             <span className="text-[0.65rem] text-ge-accent min-w-4 text-right">{sensitivity}</span>
@@ -93,14 +107,18 @@ export default function App() {
           onExploreMore={handleExploreMore}
           showExploreMore={!!selectedIso && hasCountryData}
         />
-        <Sidebar selectedIso={selectedIso} selectedName={selectedName} channels={channels} categories={categories} videos={videos} loading={loading} error={error} />
+        <Sidebar
+          selectedIso={selectedIso}
+          selectedName={selectedName}
+          channels={channels}
+          categories={categories}
+          videos={videos}
+          loading={loading}
+          error={error}
+        />
       </div>
 
-      <CategoryTrendingModal
-        countryName={selectedName}
-        isOpen={showModal}
-        onClose={closeModal}
-      />
+      <CategoryTrendingModal countryName={selectedName} isOpen={showModal} onClose={closeModal} />
     </div>
   );
 }

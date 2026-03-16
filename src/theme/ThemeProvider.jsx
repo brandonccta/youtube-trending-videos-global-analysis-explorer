@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { THEME_MODE, getSystemTimeZone, resolveThemeFromTime } from './theme';
 
 const ThemeContext = createContext(null);
@@ -23,10 +31,13 @@ function useAutoThemeTimer({ enabled, timeZone, onTick }) {
     const msToNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
 
     let intervalId;
-    const timeoutId = window.setTimeout(() => {
-      tick();
-      intervalId = window.setInterval(tick, 60_000);
-    }, Math.max(250, msToNextMinute));
+    const timeoutId = window.setTimeout(
+      () => {
+        tick();
+        intervalId = window.setInterval(tick, 60_000);
+      },
+      Math.max(250, msToNextMinute)
+    );
 
     return () => {
       window.clearTimeout(timeoutId);
@@ -62,12 +73,15 @@ export function ThemeProvider({ children }) {
     applyResolvedThemeToDom(resolvedTheme);
   }, [resolvedTheme]);
 
-  const value = useMemo(() => ({
-    mode,
-    setMode,
-    resolvedTheme, // 'day' | 'night'
-    timeZone,
-  }), [mode, resolvedTheme, timeZone]);
+  const value = useMemo(
+    () => ({
+      mode,
+      setMode,
+      resolvedTheme, // 'day' | 'night'
+      timeZone,
+    }),
+    [mode, resolvedTheme, timeZone]
+  );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
@@ -77,4 +91,3 @@ export function useTheme() {
   if (!ctx) throw new Error('useTheme must be used within <ThemeProvider>');
   return ctx;
 }
-

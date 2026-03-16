@@ -12,8 +12,7 @@ export default function ThemeToggle() {
   }, []);
 
   // when mode is auto, visually reflect the currently resolved theme.
-  const displayMode =
-    mode === THEME_MODE.AUTO ? resolvedTheme : mode;
+  const displayMode = mode === THEME_MODE.AUTO ? resolvedTheme : mode;
 
   const thumbStyle =
     displayMode === THEME_MODE.NIGHT
@@ -25,8 +24,7 @@ export default function ThemeToggle() {
       <button
         type="button"
         onClick={() => {
-          const nextMode =
-            displayMode === THEME_MODE.DAY ? THEME_MODE.NIGHT : THEME_MODE.DAY;
+          const nextMode = displayMode === THEME_MODE.DAY ? THEME_MODE.NIGHT : THEME_MODE.DAY;
           setMode(nextMode);
         }}
         className="relative inline-flex items-center justify-center rounded-full border border-ge-border bg-ge-surface w-24 h-8 cursor-pointer transition-colors"
@@ -34,9 +32,9 @@ export default function ThemeToggle() {
       >
         {/* Sliding thumb */}
         <span
-          className={[
-            'absolute top-0.5 bottom-0.5 w-1/2 rounded-full bg-ge-accent left-0',
-          ].join(' ')}
+          className={['absolute top-0.5 bottom-0.5 w-1/2 rounded-full bg-ge-accent left-0'].join(
+            ' '
+          )}
           style={{
             ...thumbStyle,
             transition: hasMounted ? 'transform 260ms ease-out' : 'none',
@@ -66,4 +64,3 @@ export default function ThemeToggle() {
     </div>
   );
 }
-
