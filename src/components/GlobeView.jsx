@@ -4,10 +4,10 @@ import * as topojson from 'topojson-client';
 import COUNTRIES from '../data/countries';
 
 // Pre-compute mappings once at module load
-const NUM_TO_ISO  = {};
+const NUM_TO_ISO = {};
 const NUM_TO_NAME = {};
-COUNTRIES.forEach(c => {
-  NUM_TO_ISO[c.num]  = c.iso;
+COUNTRIES.forEach((c) => {
+  NUM_TO_ISO[c.num] = c.iso;
   NUM_TO_NAME[c.num] = c.name;
 });
 
@@ -22,16 +22,21 @@ export default function GlobeView({
   onExploreMore,
   showExploreMore = false,
 }) {
-  const areaRef  = useRef(null);
-  const svgRef   = useRef(null);
-  const tipRef   = useRef(null);
+  const areaRef = useRef(null);
+  const svgRef = useRef(null);
+  const tipRef = useRef(null);
   const [isExiting, setIsExiting] = useState(false);
   const stateRef = useRef({
-    rotation: [0, -20, 0], isDragging: false, flyTimer: null,
+    rotation: [0, -20, 0],
+    isDragging: false,
+    flyTimer: null,
     autoSpinTimer: null,
     hasInteracted: false,
     hoverIso: null,
-    projection: null, path: null, radius: 0, activeIso: null,
+    projection: null,
+    path: null,
+    radius: 0,
+    activeIso: null,
     centroids: {},
   });
 
@@ -57,9 +62,10 @@ export default function GlobeView({
     s.path = d3.geoPath().projection(s.projection);
     const svg = d3.select(svgRef.current);
     svg.select('.ge-grat').attr('d', s.path);
-    svg.selectAll('.ge-country')
+    svg
+      .selectAll('.ge-country')
       .attr('d', s.path)
-      .attr('fill', d => {
+      .attr('fill', (d) => {
         const iso = NUM_TO_ISO[d.id];
         if (!iso) return 'var(--ge-globe-land)';
         if (iso === s.activeIso) return 'var(--ge-globe-land-active)';
@@ -69,47 +75,52 @@ export default function GlobeView({
   }, []);
 
   // Consolidated fly-to function that handles both ISO-based and coordinate-based flying
-  const flyTo = useCallback((target, onComplete) => {
-    const s = stateRef.current;
-    if (!target) return;
-    
-    let end;
-    if (typeof target === 'string') {
-      // iso-based fly
-      if (!s.centroids[target]) return;
-      const { lon, lat } = s.centroids[target];
-      end = [-lon, -lat, 0];
-    } else {
-      // coordinate-based fly
-      end = [-target.lon, -target.lat, 0];
-    }
-  
-    if (s.flyTimer) s.flyTimer.stop();
-  
-    const start = [...s.rotation];
-    const interp = d3.interpolate(start, end);
-  
-    let t0 = null;
-    s.flyTimer = d3.timer(elapsed => {
-      if (!t0) t0 = elapsed;
-      const t = Math.min(1, (elapsed - t0) / 1200);
-      s.rotation = interp(d3.easeCubicInOut(t));
-      redraw();
-      if (t >= 1) {
-        s.flyTimer.stop();
-        s.flyTimer = null;
-        s.hoverIso = null;
-        redraw();
-        onComplete?.();
+  const flyTo = useCallback(
+    (target, onComplete) => {
+      const s = stateRef.current;
+      if (!target) return;
+
+      let end;
+      if (typeof target === 'string') {
+        // iso-based fly
+        if (!s.centroids[target]) return;
+        const { lon, lat } = s.centroids[target];
+        end = [-lon, -lat, 0];
+      } else {
+        // coordinate-based fly
+        end = [-target.lon, -target.lat, 0];
       }
-    });
-  }, [redraw]);
+
+      if (s.flyTimer) s.flyTimer.stop();
+
+      const start = [...s.rotation];
+      const interp = d3.interpolate(start, end);
+
+      let t0 = null;
+      s.flyTimer = d3.timer((elapsed) => {
+        if (!t0) t0 = elapsed;
+        const t = Math.min(1, (elapsed - t0) / 1200);
+        s.rotation = interp(d3.easeCubicInOut(t));
+        redraw();
+        if (t >= 1) {
+          s.flyTimer.stop();
+          s.flyTimer = null;
+          s.hoverIso = null;
+          redraw();
+          onComplete?.();
+        }
+      });
+    },
+    [redraw]
+  );
 
   const setupGlobe = useCallback(() => {
     const s = stateRef.current;
-    const area = areaRef.current, svgEl = svgRef.current;
+    const area = areaRef.current,
+      svgEl = svgRef.current;
     if (!area || !svgEl) return;
-    const w = area.clientWidth, h = area.clientHeight;
+    const w = area.clientWidth,
+      h = area.clientHeight;
     // reserve space at the bottom for the hint row so it doesn't overlap the globe.
     // this keeps the globe visually centered within the remaining vertical space.
     const footerReservePx = 35;
@@ -122,64 +133,110 @@ export default function GlobeView({
     const svg = d3.select(svgEl).attr('width', w).attr('height', h);
     svg.selectAll('*').remove();
 
-    s.projection = d3.geoOrthographic()
-      .scale(s.radius).translate([cx, cy])
-      .clipAngle(90).rotate(s.rotation);
+    s.projection = d3
+      .geoOrthographic()
+      .scale(s.radius)
+      .translate([cx, cy])
+      .clipAngle(90)
+      .rotate(s.rotation);
     s.path = d3.geoPath().projection(s.projection);
 
     const defs = svg.append('defs');
-    const og = defs.append('radialGradient').attr('id','ge-og').attr('cx','38%').attr('cy','36%');
-    og.append('stop').attr('offset','0%').attr('stop-color','var(--ge-globe-ocean-0)');
-    og.append('stop').attr('offset','100%').attr('stop-color','var(--ge-globe-ocean-1)');
-    const ag = defs.append('radialGradient').attr('id','ge-ag').attr('cx','50%').attr('cy','50%');
-    ag.append('stop').attr('offset','75%').attr('stop-color','transparent');
-    ag.append('stop').attr('offset','100%').attr('stop-color','var(--ge-globe-atmo)');
-    const sg = defs.append('radialGradient').attr('id','ge-sg').attr('cx','32%').attr('cy','28%');
-    sg.append('stop').attr('offset','0%').attr('stop-color','var(--ge-globe-sheen)');
-    sg.append('stop').attr('offset','60%').attr('stop-color','transparent');
+    const og = defs
+      .append('radialGradient')
+      .attr('id', 'ge-og')
+      .attr('cx', '38%')
+      .attr('cy', '36%');
+    og.append('stop').attr('offset', '0%').attr('stop-color', 'var(--ge-globe-ocean-0)');
+    og.append('stop').attr('offset', '100%').attr('stop-color', 'var(--ge-globe-ocean-1)');
+    const ag = defs
+      .append('radialGradient')
+      .attr('id', 'ge-ag')
+      .attr('cx', '50%')
+      .attr('cy', '50%');
+    ag.append('stop').attr('offset', '75%').attr('stop-color', 'transparent');
+    ag.append('stop').attr('offset', '100%').attr('stop-color', 'var(--ge-globe-atmo)');
+    const sg = defs
+      .append('radialGradient')
+      .attr('id', 'ge-sg')
+      .attr('cx', '32%')
+      .attr('cy', '28%');
+    sg.append('stop').attr('offset', '0%').attr('stop-color', 'var(--ge-globe-sheen)');
+    sg.append('stop').attr('offset', '60%').attr('stop-color', 'transparent');
 
-    svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',s.radius+18)
-      .attr('fill','none').attr('stroke','var(--ge-globe-ring)').attr('stroke-width',18);
-    svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',s.radius)
-      .attr('fill','url(#ge-og)');
-    svg.append('path').datum(d3.geoGraticule()())
-      .attr('class','ge-grat').attr('fill','none')
-      .attr('stroke','var(--ge-globe-graticule)').attr('stroke-width',.5)
-      .attr('d', s.path).attr('pointer-events','none');
+    svg
+      .append('circle')
+      .attr('cx', cx)
+      .attr('cy', cy)
+      .attr('r', s.radius + 18)
+      .attr('fill', 'none')
+      .attr('stroke', 'var(--ge-globe-ring)')
+      .attr('stroke-width', 18);
+    svg
+      .append('circle')
+      .attr('cx', cx)
+      .attr('cy', cy)
+      .attr('r', s.radius)
+      .attr('fill', 'url(#ge-og)');
+    svg
+      .append('path')
+      .datum(d3.geoGraticule()())
+      .attr('class', 'ge-grat')
+      .attr('fill', 'none')
+      .attr('stroke', 'var(--ge-globe-graticule)')
+      .attr('stroke-width', 0.5)
+      .attr('d', s.path)
+      .attr('pointer-events', 'none');
 
-    const g = svg.append('g').attr('id','ge-countries');
+    const g = svg.append('g').attr('id', 'ge-countries');
 
-    svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',s.radius)
-      .attr('fill','url(#ge-ag)').attr('pointer-events','none');
-    svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',s.radius)
-      .attr('fill','url(#ge-sg)').attr('pointer-events','none');
+    svg
+      .append('circle')
+      .attr('cx', cx)
+      .attr('cy', cy)
+      .attr('r', s.radius)
+      .attr('fill', 'url(#ge-ag)')
+      .attr('pointer-events', 'none');
+    svg
+      .append('circle')
+      .attr('cx', cx)
+      .attr('cy', cy)
+      .attr('r', s.radius)
+      .attr('fill', 'url(#ge-sg)')
+      .attr('pointer-events', 'none');
 
     // d3 drag on the svg for rotation
-    svg.call(d3.drag()
-      .on('start', event => {
-        noteFirstInteraction();
-        if (s.flyTimer) { s.flyTimer.stop(); s.flyTimer = null; }
-        s.isDragging = false;
-        s._x0 = event.x; s._y0 = event.y;
-        s._r0 = [...s.projection.rotate()];
-      })
-      .on('drag', event => {
-        s.isDragging = true;
-        const sens = 0.2 * Math.pow(15, sensitivity / 10);
-        const dx = (event.x - s._x0) * sens * (180 / (Math.PI * s.radius));
-        const dy = (event.y - s._y0) * sens * (180 / (Math.PI * s.radius));
-        s.rotation = [s._r0[0] + dx, Math.max(-90, Math.min(90, s._r0[1] - dy)), s._r0[2]];
-        redraw();
-        if (tipRef.current) tipRef.current.style.opacity = '0';
-      })
-      .on('end', () => setTimeout(() => s.isDragging = false, 50))
+    svg.call(
+      d3
+        .drag()
+        .on('start', (event) => {
+          noteFirstInteraction();
+          if (s.flyTimer) {
+            s.flyTimer.stop();
+            s.flyTimer = null;
+          }
+          s.isDragging = false;
+          s._x0 = event.x;
+          s._y0 = event.y;
+          s._r0 = [...s.projection.rotate()];
+        })
+        .on('drag', (event) => {
+          s.isDragging = true;
+          const sens = 0.2 * Math.pow(15, sensitivity / 10);
+          const dx = (event.x - s._x0) * sens * (180 / (Math.PI * s.radius));
+          const dy = (event.y - s._y0) * sens * (180 / (Math.PI * s.radius));
+          s.rotation = [s._r0[0] + dx, Math.max(-90, Math.min(90, s._r0[1] - dy)), s._r0[2]];
+          redraw();
+          if (tipRef.current) tipRef.current.style.opacity = '0';
+        })
+        .on('end', () => setTimeout(() => (s.isDragging = false), 50))
     );
 
-    d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then(world => {
+    d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then((world) => {
       const features = topojson.feature(world, world.objects.countries).features;
-      
+
       s.centroids = {};
-      features.forEach(f => {
+      features.forEach((f) => {
         const iso = NUM_TO_ISO[f.id];
         if (!iso) return;
         const [lon, lat] = d3.geoCentroid(f);
@@ -188,17 +245,20 @@ export default function GlobeView({
 
       g.selectAll('.ge-country')
         .data(features)
-        .enter().append('path')
-        .attr('class','ge-country')
+        .enter()
+        .append('path')
+        .attr('class', 'ge-country')
         .attr('d', s.path)
-        .attr('fill', d => NUM_TO_ISO[d.id] === s.activeIso ? 'var(--ge-globe-land-active)' : 'var(--ge-globe-land)')
-        .attr('stroke','var(--ge-globe-stroke)')
-        .attr('stroke-width', .5)
-        .style('cursor','pointer')
+        .attr('fill', (d) =>
+          NUM_TO_ISO[d.id] === s.activeIso ? 'var(--ge-globe-land-active)' : 'var(--ge-globe-land)'
+        )
+        .attr('stroke', 'var(--ge-globe-stroke)')
+        .attr('stroke-width', 0.5)
+        .style('cursor', 'pointer')
         // ── use pointer events — d3 drag does not intercept these ──
-        .on('pointerover', function(event, d) {
+        .on('pointerover', function (event, d) {
           if (s.isDragging || s.flyTimer) return;
-          const iso  = NUM_TO_ISO[d.id];
+          const iso = NUM_TO_ISO[d.id];
           const name = NUM_TO_NAME[d.id];
           if (!iso || !name) return;
           s.hoverIso = iso;
@@ -206,29 +266,29 @@ export default function GlobeView({
           const tip = tipRef.current;
           if (tip) {
             tip.style.opacity = '1';
-            tip.style.left = (event.offsetX + 14) + 'px';
-            tip.style.top  = (event.offsetY - 34) + 'px';
+            tip.style.left = event.offsetX + 14 + 'px';
+            tip.style.top = event.offsetY - 34 + 'px';
             tip.textContent = name;
           }
         })
-        .on('pointermove', function(event, d) {
+        .on('pointermove', function (event, d) {
           if (s.isDragging || s.flyTimer) return;
           const tip = tipRef.current;
           if (tip) {
-            tip.style.left = (event.offsetX + 14) + 'px';
-            tip.style.top  = (event.offsetY - 34) + 'px';
+            tip.style.left = event.offsetX + 14 + 'px';
+            tip.style.top = event.offsetY - 34 + 'px';
           }
         })
-        .on('pointerout', function(event, d) {
+        .on('pointerout', function (event, d) {
           const iso = NUM_TO_ISO[d.id];
           if (iso && s.hoverIso === iso) s.hoverIso = null;
           redraw();
           const tip = tipRef.current;
           if (tip) tip.style.opacity = '0';
         })
-        .on('pointerup', function(event, d) {
+        .on('pointerup', function (event, d) {
           if (s.isDragging) return;
-          const iso  = NUM_TO_ISO[d.id];
+          const iso = NUM_TO_ISO[d.id];
           const name = NUM_TO_NAME[d.id];
           if (!iso || !name) return;
           // click implies intent; clear hover so it can't "stick" mid-fly
@@ -240,7 +300,9 @@ export default function GlobeView({
     });
   }, [sensitivity, onCountryClick, noteFirstInteraction, redraw, flyTo]);
 
-  useEffect(() => { setupGlobe(); }, [setupGlobe]);
+  useEffect(() => {
+    setupGlobe();
+  }, [setupGlobe]);
 
   useEffect(() => {
     const s = stateRef.current;
@@ -256,10 +318,19 @@ export default function GlobeView({
 
     s.autoSpinTimer = d3.timer((elapsed) => {
       // permanently stop after any user interaction.
-      if (s.hasInteracted) { stopAutoSpin(); return; }
+      if (s.hasInteracted) {
+        stopAutoSpin();
+        return;
+      }
       // don't fight dragging or fly-to animations.
-      if (s.isDragging || s.flyTimer) { lastElapsed = elapsed; return; }
-      if (lastElapsed == null) { lastElapsed = elapsed; return; }
+      if (s.isDragging || s.flyTimer) {
+        lastElapsed = elapsed;
+        return;
+      }
+      if (lastElapsed == null) {
+        lastElapsed = elapsed;
+        return;
+      }
       const dt = elapsed - lastElapsed;
       lastElapsed = elapsed;
       // increase lambda to rotate left-to-right.
@@ -318,7 +389,10 @@ export default function GlobeView({
         }}
       />
 
-      <svg ref={svgRef} style={{ cursor: 'grab', filter: 'drop-shadow(0 0 50px var(--ge-globe-shadow))' }} />
+      <svg
+        ref={svgRef}
+        style={{ cursor: 'grab', filter: 'drop-shadow(0 0 50px var(--ge-globe-shadow))' }}
+      />
 
       <div
         ref={tipRef}
@@ -352,9 +426,7 @@ export default function GlobeView({
         <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-10 pointer-events-none globe-explore-wrapper">
           <button
             onClick={onExploreMore}
-            className={`bg-ge-surface border border-ge-accent text-ge-accent px-7 py-3 rounded-xl font-display font-semibold text-[1.05rem] tracking-wide uppercase shadow-xl hover:shadow-2xl pointer-events-auto globe-explore-button ${
-              'animate-explore-enter hover:bg-ge-surface2 hover:border-ge-accent/80'
-            }`}
+            className={`bg-ge-surface border border-ge-accent text-ge-accent px-7 py-3 rounded-xl font-display font-semibold text-[1.05rem] tracking-wide uppercase shadow-xl hover:shadow-2xl pointer-events-auto globe-explore-button ${'animate-explore-enter hover:bg-ge-surface2 hover:border-ge-accent/80'}`}
             style={{ boxShadow: '0 0 28px rgba(56,189,248,0.35)' }}
           >
             Explore More

@@ -5,18 +5,16 @@ import { formatViews } from '../utils/formatNumber';
 import { CATEGORY_COLORS, DEFAULT_CAT } from './Sidebar';
 
 const CATEGORY_LINE_COLORS = {
-  'Entertainment': '#38bdf8',      // blue
-  'Gaming': '#fb923c',              // orange
-  'Music': '#34d399',               // green
-  'People & Blogs': '#f472b6',     // red/pink
-  'Sports': '#a78bfa',              // purple
+  Entertainment: '#38bdf8', // blue
+  Gaming: '#fb923c', // orange
+  Music: '#34d399', // green
+  'People & Blogs': '#f472b6', // red/pink
+  Sports: '#a78bfa', // purple
 };
 
 // Helper function moved outside component to avoid recreation on every render
 const colorForCategory = (category) =>
-  CATEGORY_LINE_COLORS[category] ||
-  (CATEGORY_COLORS[category]?.text) ||
-  DEFAULT_CAT.text;
+  CATEGORY_LINE_COLORS[category] || CATEGORY_COLORS[category]?.text || DEFAULT_CAT.text;
 
 // Wrap long title into multiple lines (by approximate width); returns array of lines
 function wrapTitle(text, maxWidthPx, fontSize = 16) {
@@ -31,16 +29,20 @@ function wrapTitle(text, maxWidthPx, fontSize = 16) {
       line = next;
     } else {
       if (line) lines.push(line);
-      line = word.length > maxCharsPerLine ? word.match(new RegExp(`.{1,${maxCharsPerLine}}`, 'g')).join('\n') : word;
+      line =
+        word.length > maxCharsPerLine
+          ? word.match(new RegExp(`.{1,${maxCharsPerLine}}`, 'g')).join('\n')
+          : word;
     }
   }
   if (line) lines.push(line);
-  return lines.flatMap(l => l.includes('\n') ? l.split('\n') : [l]);
+  return lines.flatMap((l) => (l.includes('\n') ? l.split('\n') : [l]));
 }
 
 // Add chart title to D3 group (single line or wrapped for narrow viewports)
 function addChartTitle(g, title, width, isNarrow) {
-  const textEl = g.append('text')
+  const textEl = g
+    .append('text')
     .attr('x', width / 2)
     .attr('y', -15)
     .attr('text-anchor', 'middle')
@@ -51,7 +53,8 @@ function addChartTitle(g, title, width, isNarrow) {
   if (isNarrow) {
     const titleLines = wrapTitle(title, width, 16);
     titleLines.forEach((line, i) => {
-      textEl.append('tspan')
+      textEl
+        .append('tspan')
         .attr('x', width / 2)
         .attr('dy', i === 0 ? 0 : '1.2em')
         .text(line);
@@ -88,42 +91,42 @@ const parseTags = (tagsRaw) => {
   if (tagsRaw == null || tagsRaw === '' || (typeof tagsRaw === 'string' && !tagsRaw.trim())) {
     return [];
   }
-  
+
   // if already an array, filter and return
   if (Array.isArray(tagsRaw)) {
     return tagsRaw
-      .filter(t => t != null && String(t).trim())
-      .map(t => String(t).trim())
-      .filter(t => t.length > 0);
+      .filter((t) => t != null && String(t).trim())
+      .map((t) => String(t).trim())
+      .filter((t) => t.length > 0);
   }
-  
+
   // if string, try to parse as json first, then fall back to pipe-separated
   if (typeof tagsRaw === 'string') {
     const trimmed = tagsRaw.trim();
     if (!trimmed) return [];
-    
+
     // try parsing as json array (e.g., '["tag1","tag2"]')
     if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
       try {
         const parsed = JSON.parse(trimmed);
         if (Array.isArray(parsed)) {
           return parsed
-            .filter(t => t != null && String(t).trim())
-            .map(t => String(t).trim())
-            .filter(t => t.length > 0);
+            .filter((t) => t != null && String(t).trim())
+            .map((t) => String(t).trim())
+            .filter((t) => t.length > 0);
         }
       } catch (e) {
         // not valid json, fall through to pipe-separated parsing
       }
     }
-    
+
     // fall back to pipe-separated string (e.g., 'tag1|tag2|tag3')
     return trimmed
       .split('|')
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
   }
-  
+
   return [];
 };
 
@@ -141,7 +144,7 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
   const [maxSelected, setMaxSelected] = useState(3);
   // keep order so we can evict oldest when exceeding maxSelected
   const [selectedKeys, setSelectedKeys] = useState([]); // ["<category>|<dateStr>" or "<dateStr>", ...]
-  
+
   // use appropriate data based on active tab
   const data = activeTab === 'categories' ? categoryData : videoData;
 
@@ -165,7 +168,7 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
       if (!categoryData?.length) return [];
       if (!topCategories.length) return [];
       const set = new Set(topCategories);
-      return categoryData.filter(d => set.has(d.category));
+      return categoryData.filter((d) => set.has(d.category));
     } else {
       // for videos tab, return all video data
       return videoData || [];
@@ -187,40 +190,44 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
       const dateKey = normalizeDate(row.date);
       const key = `${row.category}|${dateKey}`;
       const tagsRaw = row?.top5_tags;
-      
+
       const tags = parseTags(tagsRaw);
       map.set(key, tags.slice(0, 5));
     }
-    
+
     return map;
   }, [filteredData, activeTab]);
 
   const selectedCards = useMemo(() => {
     if (!selectedKeys.length) return [];
     if (activeTab === 'categories') {
-      const byKey = new Map(filteredData.map(r => {
-        const dateKey = normalizeDate(r.date);
-        return [`${r.category}|${dateKey}`, r];
-      }));
+      const byKey = new Map(
+        filteredData.map((r) => {
+          const dateKey = normalizeDate(r.date);
+          return [`${r.category}|${dateKey}`, r];
+        })
+      );
       return selectedKeys
-        .map(key => {
+        .map((key) => {
           const row = byKey.get(key);
           if (!row) return null;
-          
+
           // get tags from parsedTags map, with fallback to raw data
           let tags = parsedTags.get(key) || [];
           if (tags.length === 0 && row.top5_tags) {
             const tagsRaw = row.top5_tags;
             if (typeof tagsRaw === 'string' && tagsRaw.trim()) {
-              tags = tagsRaw.trim().split('|')
-                .map(s => s.trim())
+              tags = tagsRaw
+                .trim()
+                .split('|')
+                .map((s) => s.trim())
                 .filter(Boolean)
                 .slice(0, 5);
             } else if (Array.isArray(tagsRaw)) {
               tags = tagsRaw.slice(0, 5);
             }
           }
-          
+
           return {
             key,
             category: row.category,
@@ -232,15 +239,17 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
         .filter(Boolean);
     } else {
       // for videos tab
-      const byKey = new Map(filteredData.map(r => {
-        const dateKey = normalizeDate(r.date);
-        return [dateKey, r];
-      }));
+      const byKey = new Map(
+        filteredData.map((r) => {
+          const dateKey = normalizeDate(r.date);
+          return [dateKey, r];
+        })
+      );
       return selectedKeys
-        .map(key => {
+        .map((key) => {
           const row = byKey.get(key);
           if (!row) return null;
-          
+
           return {
             key,
             video_title: row.video_title,
@@ -262,7 +271,7 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
   const videoCategories = useMemo(() => {
     if (activeTab !== 'videos' || !videoData?.length) return [];
     const categories = new Set();
-    videoData.forEach(row => {
+    videoData.forEach((row) => {
       if (row.category) categories.add(row.category);
     });
     return Array.from(categories).sort();
@@ -270,7 +279,7 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
 
   useEffect(() => {
     if (!isOpen || !countryName) return;
-    
+
     setLoading(true);
     setError(null);
     setShowSpinner(false);
@@ -283,10 +292,7 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
     }, 180);
 
     // fetch both datasets in parallel
-    Promise.all([
-      fetchCategoryTrendingOverTime(countryName),
-      fetchTopVideosOverTime(countryName)
-    ])
+    Promise.all([fetchCategoryTrendingOverTime(countryName), fetchTopVideosOverTime(countryName)])
       .then(([categoryResult, videoResult]) => {
         setCategoryData(categoryResult);
         setVideoData(videoResult);
@@ -297,7 +303,7 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
           spinnerDelayRef.current = null;
         }
       })
-      .catch(err => {
+      .catch((err) => {
         setError(err.message);
         setLoading(false);
         setShowSpinner(false);
@@ -306,7 +312,7 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
           spinnerDelayRef.current = null;
         }
       });
-    
+
     return () => {
       if (spinnerDelayRef.current) {
         clearTimeout(spinnerDelayRef.current);
@@ -338,13 +344,10 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
     if (!isOpen || !filteredData.length || !svgRef.current || !wrapRef.current) return;
 
     const containerW =
-      chartWrapRef.current?.clientWidth ||
-      svgRef.current?.parentElement?.clientWidth ||
-      900;
+      chartWrapRef.current?.clientWidth || svgRef.current?.parentElement?.clientWidth || 900;
     // treat "narrow" as matching our css/mobile breakpoint (viewport width),
     // not just the chart container width (which is capped on desktop).
-    const isNarrow =
-      typeof window !== 'undefined' ? window.innerWidth <= 900 : containerW <= 900;
+    const isNarrow = typeof window !== 'undefined' ? window.innerWidth <= 900 : containerW <= 900;
     const margin = isNarrow
       ? { top: 52, right: 24, bottom: 72, left: 80 }
       : { top: 40, right: 24, bottom: 60, left: 80 };
@@ -354,12 +357,12 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
     // clear previous chart
     d3.select(svgRef.current).selectAll('*').remove();
 
-    const svg = d3.select(svgRef.current)
+    const svg = d3
+      .select(svgRef.current)
       .attr('width', width + margin.left + margin.right)
       .attr('height', height + margin.top + margin.bottom);
 
-    const g = svg.append('g')
-      .attr('transform', `translate(${margin.left},${margin.top})`);
+    const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
     // parse dates
     const parseDate = (dateStr) => {
@@ -369,38 +372,40 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
     };
 
     // set up scales
-    const allDates = filteredData.map(d => {
-      const dateOnly = d.date ? String(d.date).split('T')[0] : null;
-      return d3.timeParse('%Y-%m-%d')(dateOnly);
-    }).filter(Boolean);
-    const xScale = d3.scaleTime()
-      .domain(d3.extent(allDates))
-      .range([0, width]);
+    const allDates = filteredData
+      .map((d) => {
+        const dateOnly = d.date ? String(d.date).split('T')[0] : null;
+        return d3.timeParse('%Y-%m-%d')(dateOnly);
+      })
+      .filter(Boolean);
+    const xScale = d3.scaleTime().domain(d3.extent(allDates)).range([0, width]);
 
-    const maxValue = d3.max(filteredData, d => Number(d.trending_appearances) || 0) || 1;
-    const yScale = d3.scaleLinear()
+    const maxValue = d3.max(filteredData, (d) => Number(d.trending_appearances) || 0) || 1;
+    const yScale = d3
+      .scaleLinear()
       .domain([0, maxValue * 1.1])
       .range([height, 0]);
 
     // create line generator (only for categories)
-    const line = d3.line()
-      .x(d => xScale(d.date))
-      .y(d => yScale(d.value))
+    const line = d3
+      .line()
+      .x((d) => xScale(d.date))
+      .y((d) => yScale(d.value))
       .curve(d3.curveMonotoneX);
 
     // add axes
-    const xAxis = d3.axisBottom(xScale)
+    const xAxis = d3
+      .axisBottom(xScale)
       .ticks(isNarrow ? Math.min(8, Math.max(5, Math.floor(width / 80))) : d3.timeMonth.every(2))
       .tickFormat(d3.timeFormat('%Y-%m'));
 
-    const xAxisG = g.append('g')
-      .attr('transform', `translate(0,${height})`)
-      .call(xAxis);
+    const xAxisG = g.append('g').attr('transform', `translate(0,${height})`).call(xAxis);
 
-    xAxisG.selectAll('text')
+    xAxisG
+      .selectAll('text')
       .style('fill', 'var(--color-ge-text)')
       .style('font-size', '11px')
-      .each(function() {
+      .each(function () {
         if (isNarrow) {
           d3.select(this)
             .attr('transform', 'rotate(-25)')
@@ -410,9 +415,10 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
         }
       });
 
-    const yAxis = d3.axisLeft(yScale)
+    const yAxis = d3
+      .axisLeft(yScale)
       .ticks(8)
-      .tickFormat(d => d >= 1000 ? `${(d / 1000).toFixed(0)}K` : d);
+      .tickFormat((d) => (d >= 1000 ? `${(d / 1000).toFixed(0)}K` : d));
 
     g.append('g')
       .call(yAxis)
@@ -441,7 +447,8 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
       .text('Date');
 
     // tooltip (html overlay)
-    const tooltip = d3.select(wrapRef.current)
+    const tooltip = d3
+      .select(wrapRef.current)
       .append('div')
       .attr('class', 'ge-chart-tip')
       .style('position', 'absolute')
@@ -460,9 +467,7 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
     const showTip = (event, d, category, color, isVideo = false) => {
       if (isVideo) {
         // video tooltip - match dimensions of categories tooltip
-        tooltip
-          .style('opacity', 1)
-          .html(`
+        tooltip.style('opacity', 1).html(`
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
               <span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:${color};"></span>
               <div style="font-family:var(--font-display);font-weight:800;color:var(--color-ge-text);font-size:12px;">
@@ -490,26 +495,24 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
         const rawDateStr = d.raw?.date;
         const dateKey = normalizeDate(rawDateStr);
         const key = `${category}|${dateKey}`;
-        
+
         // try to get tags from parsedTags map first
         let tags = parsedTags.get(key) || [];
-        
+
         // if not found, try direct lookup with alternative keys
         if (tags.length === 0) {
           const altKey1 = `${category}|${rawDateStr}`;
           tags = parsedTags.get(altKey1) || [];
         }
-        
+
         // fallback: try to get tags directly from raw data
         if (tags.length === 0 && d.raw?.top5_tags) {
           tags = parseTags(d.raw.top5_tags).slice(0, 5);
         }
-        
+
         const finalTags = tags;
 
-        tooltip
-          .style('opacity', 1)
-          .html(`
+        tooltip.style('opacity', 1).html(`
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
               <span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:${color};"></span>
               <div style="font-family:var(--font-display);font-weight:800;color:var(--color-ge-text);font-size:12px;">
@@ -523,9 +526,12 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
               Top tags
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:6px;">
-              ${(finalTags.length ? finalTags.slice(0, 5) : ['—']).map(t =>
-                `<span style="border:1px solid var(--color-ge-border);background:var(--color-ge-surface2);color:var(--color-ge-text);border-radius:999px;padding:4px 8px;font-size:11px;">${t}</span>`
-              ).join('')}
+              ${(finalTags.length ? finalTags.slice(0, 5) : ['—'])
+                .map(
+                  (t) =>
+                    `<span style="border:1px solid var(--color-ge-border);background:var(--color-ge-surface2);color:var(--color-ge-text);border-radius:999px;padding:4px 8px;font-size:11px;">${t}</span>`
+                )
+                .join('')}
             </div>
           `);
       }
@@ -547,8 +553,8 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
     if (activeTab === 'categories') {
       // Categories tab: draw lines and points
       const dataByCategory = {};
-      
-      filteredData.forEach(d => {
+
+      filteredData.forEach((d) => {
         const date = parseDate(d.date);
         if (!date) return;
         const cat = d.category;
@@ -563,7 +569,7 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
       });
 
       // sort each category's data by date
-      Object.keys(dataByCategory).forEach(cat => {
+      Object.keys(dataByCategory).forEach((cat) => {
         dataByCategory[cat].sort((a, b) => a.date - b.date);
       });
 
@@ -571,12 +577,12 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
       // original size is 4, selected should be 2x = 8
       const baseRadius = 4;
       const selectedRadius = baseRadius * 2; // 8
-      
+
       const categories = Object.keys(dataByCategory);
       categories.forEach((category, i) => {
         const color = colorForCategory(category);
         const pathData = dataByCategory[category];
-        
+
         // draw line
         g.append('path')
           .datum(pathData)
@@ -591,9 +597,9 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
           .enter()
           .append('circle')
           .attr('class', `dot-${i}`)
-          .attr('cx', d => xScale(d.date))
-          .attr('cy', d => yScale(d.value))
-          .attr('r', d => {
+          .attr('cx', (d) => xScale(d.date))
+          .attr('cy', (d) => yScale(d.value))
+          .attr('r', (d) => {
             const dateKey = normalizeDate(d.raw?.date);
             const key = `${category}|${dateKey}`;
             return selectedKeySet.has(key) ? selectedRadius : baseRadius;
@@ -608,9 +614,9 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
           .on('click', (_, d) => {
             const dateKey = normalizeDate(d.raw?.date);
             const key = `${category}|${dateKey}`;
-            setSelectedKeys(prev => {
+            setSelectedKeys((prev) => {
               const has = prev.includes(key);
-              if (has) return prev.filter(k => k !== key);
+              if (has) return prev.filter((k) => k !== key);
               const next = [...prev, key];
               const limit = Math.max(1, Number(maxSelected) || 1);
               if (next.length <= limit) return next;
@@ -622,22 +628,24 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
       addChartTitle(g, `Top Trending Categories Over Time — ${countryName}`, width, isNarrow);
     } else {
       // Videos tab: draw single points only (no lines)
-      const videoPoints = filteredData.map(d => {
-        const date = parseDate(d.date);
-        if (!date) return null;
-        return {
-          date,
-          value: Number(d.trending_appearances) || 0,
-          raw: d,
-          category: d.category,
-        };
-      }).filter(Boolean);
+      const videoPoints = filteredData
+        .map((d) => {
+          const date = parseDate(d.date);
+          if (!date) return null;
+          return {
+            date,
+            value: Number(d.trending_appearances) || 0,
+            raw: d,
+            category: d.category,
+          };
+        })
+        .filter(Boolean);
 
       // draw circles for each video point
       // original size is 4, selected should be 2x = 8
       const baseRadius = 4;
       const selectedRadius = baseRadius * 2; // 8
-      
+
       videoPoints.forEach((d, i) => {
         const dateKey = normalizeDate(d.raw?.date);
         const key = dateKey;
@@ -658,9 +666,9 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
           .on('pointermove', (event) => moveTip(event))
           .on('pointerleave', hideTip)
           .on('click', () => {
-            setSelectedKeys(prev => {
+            setSelectedKeys((prev) => {
               const has = prev.includes(key);
-              if (has) return prev.filter(k => k !== key);
+              if (has) return prev.filter((k) => k !== key);
               const next = [...prev, key];
               const limit = Math.max(1, Number(maxSelected) || 1);
               if (next.length <= limit) return next;
@@ -682,13 +690,13 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
   if (!isOpen) return null;
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm ge-modal-backdrop"
       onClick={onClose}
     >
-      <div 
+      <div
         className="bg-ge-panel border border-ge-border rounded-lg shadow-2xl p-6 max-w-4xl w-full mx-4 relative ge-modal-panel"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
@@ -758,7 +766,7 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
                     type="button"
                     onClick={() => {
                       const cap = Math.max(1, maxSelectableDots || 1);
-                      setMaxSelected(v => Math.max(1, Math.min(cap, (Number(v) || 1) - 1)));
+                      setMaxSelected((v) => Math.max(1, Math.min(cap, (Number(v) || 1) - 1)));
                     }}
                     className="h-6 px-2.5 text-ge-muted hover:text-ge-text hover:bg-ge-surface2 transition-colors border-r border-ge-border font-display font-bold text-[0.8rem]"
                     aria-label="Decrease max selections"
@@ -784,7 +792,7 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
                     type="button"
                     onClick={() => {
                       const cap = Math.max(1, maxSelectableDots || 1);
-                      setMaxSelected(v => Math.max(1, Math.min(cap, (Number(v) || 1) + 1)));
+                      setMaxSelected((v) => Math.max(1, Math.min(cap, (Number(v) || 1) + 1)));
                     }}
                     className="h-6 px-2.5 text-ge-muted hover:text-ge-text hover:bg-ge-surface2 transition-colors border-l border-ge-border font-display font-bold text-[0.8rem]"
                     aria-label="Increase max selections"
@@ -855,71 +863,97 @@ export default function CategoryTrendingModal({ countryName, isOpen, onClose }) 
                 ) : (
                   <div className="ge-modal-selected-cards bg-ge-surface border border-ge-border rounded-lg p-2 max-h-[420px] lg:max-h-[510px] overflow-y-auto flex flex-col gap-2">
                     {selectedCards.map((s) => {
-                      const durationStr = s.video_duration != null ? formatVideoDuration(s.video_duration) : null;
+                      const durationStr =
+                        s.video_duration != null ? formatVideoDuration(s.video_duration) : null;
                       return (
-                      <div
-                        key={s.key}
-                        className="bg-ge-panel/20 border border-ge-border rounded-lg p-3"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span
-                              className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                              style={{ background: colorForCategory(s.category) }}
-                            />
-                            <div className="font-display font-bold text-[0.78rem] text-ge-text truncate">
-                              {activeTab === 'videos' ? (s.video_title || 'Top Video') : s.category}
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => setSelectedKeys(prev => prev.filter(k => k !== s.key))}
-                            className="text-ge-muted hover:text-ge-text text-[0.9rem] leading-none"
-                            aria-label="Remove selection"
-                            title="Remove"
-                          >
-                            ×
-                          </button>
-                        </div>
-
-                        <div className="mt-1 text-[0.64rem] text-ge-dim flex items-center justify-between">
-                          <span>{String(s.date).slice(0, 7)}</span>
-                          <span className="font-display font-extrabold text-ge-accent">
-                            {s.trending_appearances}
-                          </span>
-                        </div>
-
-                        {activeTab === 'videos' ? (
-                          <>
-                            {(s.channel_title || durationStr) && (
-                              <div className="mt-2 text-[0.65rem] text-ge-dim flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                                {s.channel_title && (
-                                  <span>Channel: <span className="text-ge-text">{s.channel_title}</span></span>
-                                )}
-                                {durationStr && (
-                                  <span>Duration: <span className="text-ge-text">{durationStr}</span></span>
-                                )}
-                              </div>
-                            )}
-                            <div className="mt-1 text-[0.65rem] text-ge-dim flex items-center gap-3">
-                              <span>Views: <span className="text-ge-text font-semibold">{formatViews(s.video_view_count)}</span></span>
-                              <span>Likes: <span className="text-ge-text">{formatViews(s.video_like_count)}</span></span>
-                              <span>Comments: <span className="text-ge-text">{formatViews(s.video_comment_count)}</span></span>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            {(s.top5_tags && s.top5_tags.length ? s.top5_tags : ['—']).map((t) => (
+                        <div
+                          key={s.key}
+                          className="bg-ge-panel/20 border border-ge-border rounded-lg p-3"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 min-w-0">
                               <span
-                                key={t}
-                                className="border border-ge-border bg-ge-surface2 text-ge-text rounded-full px-2 py-0.5 text-[0.68rem]"
-                              >
-                                {t}
-                              </span>
-                            ))}
+                                className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                                style={{ background: colorForCategory(s.category) }}
+                              />
+                              <div className="font-display font-bold text-[0.78rem] text-ge-text truncate">
+                                {activeTab === 'videos' ? s.video_title || 'Top Video' : s.category}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() =>
+                                setSelectedKeys((prev) => prev.filter((k) => k !== s.key))
+                              }
+                              className="text-ge-muted hover:text-ge-text text-[0.9rem] leading-none"
+                              aria-label="Remove selection"
+                              title="Remove"
+                            >
+                              ×
+                            </button>
                           </div>
-                        )}
-                      </div>
-                    ); })}
+
+                          <div className="mt-1 text-[0.64rem] text-ge-dim flex items-center justify-between">
+                            <span>{String(s.date).slice(0, 7)}</span>
+                            <span className="font-display font-extrabold text-ge-accent">
+                              {s.trending_appearances}
+                            </span>
+                          </div>
+
+                          {activeTab === 'videos' ? (
+                            <>
+                              {(s.channel_title || durationStr) && (
+                                <div className="mt-2 text-[0.65rem] text-ge-dim flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                                  {s.channel_title && (
+                                    <span>
+                                      Channel:{' '}
+                                      <span className="text-ge-text">{s.channel_title}</span>
+                                    </span>
+                                  )}
+                                  {durationStr && (
+                                    <span>
+                                      Duration: <span className="text-ge-text">{durationStr}</span>
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              <div className="mt-1 text-[0.65rem] text-ge-dim flex items-center gap-3">
+                                <span>
+                                  Views:{' '}
+                                  <span className="text-ge-text font-semibold">
+                                    {formatViews(s.video_view_count)}
+                                  </span>
+                                </span>
+                                <span>
+                                  Likes:{' '}
+                                  <span className="text-ge-text">
+                                    {formatViews(s.video_like_count)}
+                                  </span>
+                                </span>
+                                <span>
+                                  Comments:{' '}
+                                  <span className="text-ge-text">
+                                    {formatViews(s.video_comment_count)}
+                                  </span>
+                                </span>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {(s.top5_tags && s.top5_tags.length ? s.top5_tags : ['—']).map(
+                                (t) => (
+                                  <span
+                                    key={t}
+                                    className="border border-ge-border bg-ge-surface2 text-ge-text rounded-full px-2 py-0.5 text-[0.68rem]"
+                                  >
+                                    {t}
+                                  </span>
+                                )
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </aside>

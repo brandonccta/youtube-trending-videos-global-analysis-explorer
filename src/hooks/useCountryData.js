@@ -2,13 +2,13 @@ import { useState, useCallback, useRef } from 'react';
 import { fetchTopChannels, fetchTopCategories, fetchTopVideos } from '../services/countries';
 
 export function useCountryData() {
-  const [selectedIso, setSelectedIso]   = useState(null);
+  const [selectedIso, setSelectedIso] = useState(null);
   const [selectedName, setSelectedName] = useState(null);
-  const [channels, setChannels]         = useState([]);
-  const [categories, setCategories]     = useState([]);
-  const [videos, setVideos]             = useState([]);
-  const [loading, setLoading]           = useState(false);
-  const [error, setError]               = useState(null);
+  const [channels, setChannels] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [videos, setVideos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const abortRef = useRef(null);
 
   const selectCountry = useCallback(async (iso, name) => {
@@ -59,5 +59,15 @@ export function useCountryData() {
     setLoading(false);
   }, []);
 
-  return { selectedIso, selectedName, channels, categories, videos, loading, error, selectCountry, clear };
+  return {
+    selectedIso,
+    selectedName,
+    channels,
+    categories,
+    videos,
+    loading,
+    error,
+    selectCountry,
+    clear,
+  };
 }
