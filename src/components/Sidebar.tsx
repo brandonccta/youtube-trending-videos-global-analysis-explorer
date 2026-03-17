@@ -1,15 +1,17 @@
-import { useEffect, useMemo, useState, useRef, memo, useCallback } from 'react';
+import { useEffect, useMemo, useState, useRef, memo, useCallback, type CSSProperties } from 'react';
 import tzLookup from 'tz-lookup';
-import COUNTRIES from '../data/countries';
+import COUNTRIES, { type Country } from '../data/countries';
 import { formatViews } from '../utils/formatNumber';
+import { CATEGORY_COLORS, DEFAULT_CATEGORY_COLORS as DEFAULT_CAT } from '../utils/categoryColors';
+import type { TopChannelRow, TopCategoryRow, TopVideoRow } from '../services/countries';
 
 const MOBILE_BREAKPOINT = 640;
-const SHEET_SNAP_POINTS_VH = [25, 50, 70, 92]; // peek, half, full, up-to-header (92vh so panel can overlay to header)
+const SHEET_SNAP_POINTS_VH = [25, 50, 70, 92] as const; // peek, half, full, up-to-header (92vh so panel can overlay to header)
 const SHEET_DEFAULT_VH = 40;
 /** when panel height reaches this (vh), it overlays the globe instead of squishing it. */
 const OVERLAY_THRESHOLD_VH = 60;
 
-function useIsMobile() {
+function useIsMobile(): boolean {
   const [isMobile, setIsMobile] = useState(
     () =>
       typeof window !== 'undefined' &&
@@ -24,79 +26,24 @@ function useIsMobile() {
   return isMobile;
 }
 
-function formatEngagement(rating) {
+function formatEngagement(rating: unknown): string {
   if (rating === null || rating === undefined) return '—';
   if (typeof rating === 'number') {
     return rating.toFixed(2) + '%';
   }
   // try to parse if it's a string number
-  const parsed = parseFloat(rating);
+  const parsed = parseFloat(String(rating));
   if (!isNaN(parsed)) {
     return parsed.toFixed(2) + '%';
   }
   return String(rating);
 }
 
-export const CATEGORY_COLORS = {
-  Gaming: { bg: 'rgba(139,92,246,0.08)', border: 'rgba(139,92,246,0.35)', text: '#a78bfa' },
-  Sports: { bg: 'rgba(52,211,153,0.08)', border: 'rgba(52,211,153,0.35)', text: '#34d399' },
-  Music: { bg: 'rgba(251,146,60,0.08)', border: 'rgba(251,146,60,0.35)', text: '#fb923c' },
-  Entertainment: { bg: 'rgba(56,189,248,0.08)', border: 'rgba(56,189,248,0.35)', text: '#38bdf8' },
-  'People & Blogs': {
-    bg: 'rgba(244,114,182,0.08)',
-    border: 'rgba(244,114,182,0.35)',
-    text: '#f472b6',
-  },
-  'News & Politics': {
-    bg: 'rgba(248,113,113,0.08)',
-    border: 'rgba(248,113,113,0.35)',
-    text: '#f87171',
-  },
-  Comedy: { bg: 'rgba(253,224,71,0.08)', border: 'rgba(253,224,71,0.35)', text: '#fde047' },
-  Education: { bg: 'rgba(45,212,191,0.08)', border: 'rgba(45,212,191,0.35)', text: '#2dd4bf' },
-  'Film & Animation': {
-    bg: 'rgba(129,140,248,0.08)',
-    border: 'rgba(129,140,248,0.35)',
-    text: '#818cf8',
-  },
-  'Science & Technology': {
-    bg: 'rgba(96,165,250,0.08)',
-    border: 'rgba(96,165,250,0.35)',
-    text: '#60a5fa',
-  },
-  'Howto & Style': {
-    bg: 'rgba(192,132,252,0.08)',
-    border: 'rgba(192,132,252,0.35)',
-    text: '#c084fc',
-  },
-  'Autos & Vehicles': {
-    bg: 'rgba(74,222,128,0.08)',
-    border: 'rgba(74,222,128,0.35)',
-    text: '#4ade80',
-  },
-  'Travel & Events': {
-    bg: 'rgba(251,191,36,0.08)',
-    border: 'rgba(251,191,36,0.35)',
-    text: '#fbbf24',
-  },
-  'Pets & Animals': {
-    bg: 'rgba(251,146,60,0.08)',
-    border: 'rgba(251,146,60,0.35)',
-    text: '#fb923c',
-  },
-};
-
-export const DEFAULT_CAT = {
-  bg: 'rgba(56,189,248,0.06)',
-  border: 'rgba(56,189,248,0.2)',
-  text: '#38bdf8',
-};
-
 const TABS = [
   { id: 'channels', label: 'Top Channels' },
   { id: 'categories', label: 'Top Categories' },
   { id: 'videos', label: 'Top Videos' },
-];
+] as const;
 
 export default function Sidebar({
   selectedIso,
@@ -106,8 +53,16 @@ export default function Sidebar({
   videos,
   loading,
   error,
+}: {
+  selectedIso: string | null;
+  selectedName: string | null;
+  channels: TopChannelRow[];
+  categories: TopCategoryRow[];
+  videos: TopVideoRow[];
+  loading: boolean;
+  error: string | null;
 }) {
-  const [activeTab, setActiveTab] = useState('channels');
+  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]['id']>('channels');
   const hasSelection = !!selectedIso;
   const isMobile = useIsMobile();
 
@@ -118,7 +73,7 @@ export default function Sidebar({
   const dragStartHeight = useRef(0);
 
   const handleSheetPointerDown = useCallback(
-    (e) => {
+    (e: any) => {
       if (!isMobile) return;
       e.preventDefault();
       dragStartY.current = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
@@ -130,15 +85,14 @@ export default function Sidebar({
 
   useEffect(() => {
     if (!isDraggingSheet) return;
-    const handleMove = (e) => {
+    const handleMove = (e: any) => {
       const clientY = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
       const deltaY = dragStartY.current - clientY; // drag up = positive delta = more height
       const vhPerPx = 100 / window.innerHeight;
       let next = dragStartHeight.current + deltaY * vhPerPx;
-      next = Math.max(
-        SHEET_SNAP_POINTS_VH[0],
-        Math.min(SHEET_SNAP_POINTS_VH[SHEET_SNAP_POINTS_VH.length - 1], next)
-      );
+      const minSnap = SHEET_SNAP_POINTS_VH[0]!;
+      const maxSnap = SHEET_SNAP_POINTS_VH[SHEET_SNAP_POINTS_VH.length - 1]!;
+      next = Math.max(minSnap, Math.min(maxSnap, next));
       setSheetHeightVh(next);
       if (e.cancelable && e.touches) e.preventDefault();
     };
@@ -176,7 +130,9 @@ export default function Sidebar({
         : topVideos.length > 0;
 
   const countryByIso = useMemo(() => new Map(COUNTRIES.map((c) => [c.iso, c])), []);
-  const selectedCountry = selectedIso ? (countryByIso.get(selectedIso) ?? null) : null;
+  const selectedCountry: Country | null = selectedIso
+    ? (countryByIso.get(selectedIso) ?? null)
+    : null;
 
   const timeZone = useMemo(() => {
     if (!selectedCountry) return null;
@@ -218,7 +174,9 @@ export default function Sidebar({
   }, [selectedCountry]);
 
   const isOverlayMode = isMobile && sheetHeightVh >= OVERLAY_THRESHOLD_VH;
-  const mobileSheetStyle = isMobile ? { height: `${sheetHeightVh}vh`, minHeight: 0 } : undefined;
+  const mobileSheetStyle: CSSProperties | undefined = isMobile
+    ? { height: `${sheetHeightVh}vh`, minHeight: 0 }
+    : undefined;
 
   return (
     <div
@@ -363,7 +321,70 @@ export default function Sidebar({
   );
 }
 
-const ChannelList = memo(function ChannelList({ channels }) {
+const ChannelTitle = memo(function ChannelTitle({ title, href }: { title: string; href?: string }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const textRef = useRef<HTMLSpanElement | null>(null);
+  const [shouldScroll, setShouldScroll] = useState(false);
+  const [scrollDistance, setScrollDistance] = useState(0);
+  const [animationDuration, setAnimationDuration] = useState(0);
+
+  useEffect(() => {
+    if (!containerRef.current || !textRef.current) return;
+    const container = containerRef.current;
+    const text = textRef.current;
+    const containerWidth = container.offsetWidth;
+    const textWidth = text.scrollWidth;
+    const needsScroll = textWidth > containerWidth;
+    setShouldScroll(needsScroll);
+    if (needsScroll) {
+      const distance = -(textWidth - containerWidth);
+      setScrollDistance(distance);
+      const SPEED_PX_PER_SEC = 50;
+      const duration = Math.abs(distance) / SPEED_PX_PER_SEC;
+      setAnimationDuration(duration);
+    }
+  }, [title]);
+
+  const scrollVars = shouldScroll
+    ? ({
+        '--scroll-distance': `${scrollDistance}px`,
+        '--animation-duration': `${animationDuration}s`,
+      } as CSSProperties & Record<string, string>)
+    : undefined;
+
+  const textSpan = (
+    <span
+      ref={textRef}
+      className={`inline-block whitespace-nowrap ${shouldScroll ? 'hover-scroll' : ''}`}
+      style={scrollVars}
+    >
+      {title}
+    </span>
+  );
+
+  return (
+    <div
+      ref={containerRef}
+      className="video-title-scroll font-display font-semibold text-[0.78rem] text-ge-text leading-snug"
+      title={title}
+    >
+      {href ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-ge-accent transition-colors cursor-pointer"
+        >
+          {textSpan}
+        </a>
+      ) : (
+        textSpan
+      )}
+    </div>
+  );
+});
+
+const ChannelList = memo(function ChannelList({ channels }: { channels: TopChannelRow[] }) {
   return (
     <>
       <div className="text-[0.56rem] tracking-[0.14em] uppercase text-ge-muted mb-3 pb-1.5 border-b border-ge-border">
@@ -371,7 +392,8 @@ const ChannelList = memo(function ChannelList({ channels }) {
       </div>
       <div className="flex flex-col gap-2">
         {channels.map((ch, i) => {
-          const cat = CATEGORY_COLORS[ch.video_category_id] ?? DEFAULT_CAT;
+          const cat =
+            CATEGORY_COLORS[ch.video_category_id as keyof typeof CATEGORY_COLORS] ?? DEFAULT_CAT;
           return (
             <div
               key={`${ch.rank}-${ch.channel_title}`}
@@ -380,39 +402,27 @@ const ChannelList = memo(function ChannelList({ channels }) {
             >
               <div className="flex items-start gap-2.5">
                 <div className="shrink-0 w-7 h-7 rounded-md bg-ge-surface2 border border-ge-border flex items-center justify-center font-display font-bold text-[0.75rem] text-ge-accent">
-                  {ch.rank}
+                  {ch.rank as any}
                 </div>
                 <div className="flex-1 min-w-0">
-                  {ch.channel_custom_url ? (
-                    <a
-                      href={
-                        ch.channel_custom_url.startsWith('http')
-                          ? ch.channel_custom_url
-                          : ch.channel_custom_url.startsWith('/')
-                            ? `https://youtube.com${ch.channel_custom_url}`
-                            : ch.channel_custom_url.startsWith('@')
-                              ? `https://youtube.com/${ch.channel_custom_url}`
-                              : `https://youtube.com/@${ch.channel_custom_url}`
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-display font-semibold text-[0.78rem] text-ge-text leading-snug truncate hover:text-ge-accent transition-colors cursor-pointer"
-                      title={ch.channel_title}
-                    >
-                      {ch.channel_title}
-                    </a>
-                  ) : (
-                    <div
-                      className="font-display font-semibold text-[0.78rem] text-ge-text leading-snug truncate"
-                      title={ch.channel_title}
-                    >
-                      {ch.channel_title}
-                    </div>
-                  )}
+                  <ChannelTitle
+                    title={String(ch.channel_title)}
+                    href={
+                      ch.channel_custom_url
+                        ? String(ch.channel_custom_url).startsWith('http')
+                          ? String(ch.channel_custom_url)
+                          : String(ch.channel_custom_url).startsWith('/')
+                            ? `https://youtube.com${String(ch.channel_custom_url)}`
+                            : String(ch.channel_custom_url).startsWith('@')
+                              ? `https://youtube.com/${String(ch.channel_custom_url)}`
+                              : `https://youtube.com/@${String(ch.channel_custom_url)}`
+                        : undefined
+                    }
+                  />
                   <div className="flex items-center gap-2 mt-1">
-                    {ch.channel_subscribers != null && ch.channel_subscribers > 0 && (
+                    {ch.channel_subscribers != null && (ch.channel_subscribers as any) > 0 && (
                       <div className="text-[0.65rem] text-ge-dim font-medium">
-                        {formatViews(ch.channel_subscribers)} subs
+                        {formatViews(Number(ch.channel_subscribers))} subs
                       </div>
                     )}
                     <span
@@ -423,7 +433,7 @@ const ChannelList = memo(function ChannelList({ channels }) {
                         color: cat.text,
                       }}
                     >
-                      {ch.video_category_id}
+                      {ch.video_category_id as any}
                     </span>
                   </div>
                 </div>
@@ -434,7 +444,7 @@ const ChannelList = memo(function ChannelList({ channels }) {
                     Total Views
                   </div>
                   <div className="font-display font-bold text-[0.8rem] text-ge-accent">
-                    {formatViews(ch.total_views || 0)}
+                    {formatViews(Number(ch.total_views || 0))}
                   </div>
                 </div>
                 <div>
@@ -442,7 +452,7 @@ const ChannelList = memo(function ChannelList({ channels }) {
                     Total Videos
                   </div>
                   <div className="font-display font-bold text-[0.8rem] text-ge-text">
-                    {formatViews(ch.total_videos || 0)}
+                    {formatViews(Number(ch.total_videos || 0))}
                   </div>
                 </div>
                 <div>
@@ -450,7 +460,7 @@ const ChannelList = memo(function ChannelList({ channels }) {
                     Trending
                   </div>
                   <div className="font-display font-bold text-[0.8rem] text-ge-text">
-                    {ch.trending_appearances}x
+                    {Number(ch.trending_appearances || 0)}x
                   </div>
                 </div>
               </div>
@@ -462,10 +472,10 @@ const ChannelList = memo(function ChannelList({ channels }) {
   );
 });
 
-const CategoryList = memo(function CategoryList({ categories }) {
+const CategoryList = memo(function CategoryList({ categories }: { categories: TopCategoryRow[] }) {
   const maxViews = useMemo(() => {
     if (!categories.length) return 1;
-    return Math.max(...categories.map((c) => c.total_views));
+    return Math.max(...categories.map((c) => Number(c.total_views || 0)));
   }, [categories]);
 
   return (
@@ -475,8 +485,9 @@ const CategoryList = memo(function CategoryList({ categories }) {
       </div>
       <div className="flex flex-col gap-2">
         {categories.map((cat, i) => {
-          const colors = CATEGORY_COLORS[cat.video_category_id] ?? DEFAULT_CAT;
-          const barWidth = (cat.total_views / maxViews) * 100;
+          const colors =
+            CATEGORY_COLORS[cat.video_category_id as keyof typeof CATEGORY_COLORS] ?? DEFAULT_CAT;
+          const barWidth = (Number(cat.total_views || 0) / maxViews) * 100;
           return (
             <div
               key={`${cat.rank}-${cat.video_category_id}`}
@@ -485,7 +496,7 @@ const CategoryList = memo(function CategoryList({ categories }) {
             >
               <div className="flex items-center gap-2.5 mb-2">
                 <div className="shrink-0 w-7 h-7 rounded-md bg-ge-surface2 border border-ge-border flex items-center justify-center font-display font-bold text-[0.75rem] text-ge-accent">
-                  {cat.rank}
+                  {cat.rank as any}
                 </div>
                 <span
                   className="rounded px-2 py-0.5 text-[0.65rem] font-display font-semibold"
@@ -495,7 +506,7 @@ const CategoryList = memo(function CategoryList({ categories }) {
                     color: colors.text,
                   }}
                 >
-                  {cat.video_category_id}
+                  {cat.video_category_id as any}
                 </span>
               </div>
 
@@ -513,7 +524,7 @@ const CategoryList = memo(function CategoryList({ categories }) {
                     Total Views
                   </div>
                   <div className="font-display font-bold text-[0.8rem] text-ge-accent">
-                    {formatViews(cat.total_views)}
+                    {formatViews(Number(cat.total_views || 0))}
                   </div>
                 </div>
                 <div>
@@ -521,7 +532,7 @@ const CategoryList = memo(function CategoryList({ categories }) {
                     Avg Views
                   </div>
                   <div className="font-display font-bold text-[0.8rem] text-ge-text">
-                    {formatViews(cat.avg_views)}
+                    {formatViews(Number(cat.avg_views || 0))}
                   </div>
                 </div>
                 <div>
@@ -529,7 +540,7 @@ const CategoryList = memo(function CategoryList({ categories }) {
                     Likes
                   </div>
                   <div className="font-display font-bold text-[0.8rem] text-ge-text">
-                    {formatViews(cat.total_likes || 0)}
+                    {formatViews(Number(cat.total_likes || 0))}
                   </div>
                 </div>
                 <div>
@@ -537,7 +548,7 @@ const CategoryList = memo(function CategoryList({ categories }) {
                     Trending
                   </div>
                   <div className="font-display font-bold text-[0.8rem] text-ge-text">
-                    {cat.trending_appearances}x
+                    {Number(cat.trending_appearances || 0)}x
                   </div>
                 </div>
               </div>
@@ -549,9 +560,9 @@ const CategoryList = memo(function CategoryList({ categories }) {
   );
 });
 
-const VideoTitle = memo(function VideoTitle({ title }) {
-  const containerRef = useRef(null);
-  const textRef = useRef(null);
+const VideoTitle = memo(function VideoTitle({ title }: { title: string }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const textRef = useRef<HTMLSpanElement | null>(null);
   const [shouldScroll, setShouldScroll] = useState(false);
   const [scrollDistance, setScrollDistance] = useState(0);
   const [animationDuration, setAnimationDuration] = useState(0);
@@ -575,6 +586,13 @@ const VideoTitle = memo(function VideoTitle({ title }) {
     }
   }, [title]);
 
+  const scrollVars = shouldScroll
+    ? ({
+        '--scroll-distance': `${scrollDistance}px`,
+        '--animation-duration': `${animationDuration}s`,
+      } as CSSProperties & Record<string, string>)
+    : undefined;
+
   return (
     <div
       ref={containerRef}
@@ -584,14 +602,7 @@ const VideoTitle = memo(function VideoTitle({ title }) {
       <span
         ref={textRef}
         className={`inline-block whitespace-nowrap ${shouldScroll ? 'hover-scroll' : ''}`}
-        style={
-          shouldScroll
-            ? {
-                '--scroll-distance': `${scrollDistance}px`,
-                '--animation-duration': `${animationDuration}s`,
-              }
-            : {}
-        }
+        style={scrollVars}
       >
         {title}
       </span>
@@ -599,7 +610,7 @@ const VideoTitle = memo(function VideoTitle({ title }) {
   );
 });
 
-const VideoList = memo(function VideoList({ videos }) {
+const VideoList = memo(function VideoList({ videos }: { videos: TopVideoRow[] }) {
   return (
     <>
       <div className="text-[0.56rem] tracking-[0.14em] uppercase text-ge-muted mb-3 pb-1.5 border-b border-ge-border">
@@ -607,15 +618,13 @@ const VideoList = memo(function VideoList({ videos }) {
       </div>
       <div className="flex flex-col gap-2">
         {videos.map((video, i) => {
-          const cat = CATEGORY_COLORS[video.video_category_id] ?? DEFAULT_CAT;
-          const videoTitle = video.video_title || video.title || 'Untitled Video';
-          const channelTitle = video.channel_title || 'Unknown Channel';
-          // handle different possible column names for view count
-          const viewCount =
-            video.video_view_count || video.view_count || video.views || video.total_views || 0;
-          // handle different possible column names for engagement rating
-          const engagement =
-            video.engagement_rating || video.engagement_score || video.engagement || null;
+          const cat =
+            CATEGORY_COLORS[video.video_category_id as keyof typeof CATEGORY_COLORS] ?? DEFAULT_CAT;
+          // `services/countries` normalizes common alternate fields into these canonical keys.
+          const videoTitle = (video.video_title as any) || (video.title as any) || 'Untitled Video';
+          const channelTitle = (video.channel_title as any) || 'Unknown Channel';
+          const viewCount = Number(video.video_view_count || 0);
+          const engagement = video.engagement_rating ?? null;
           const displayRank = i + 1; // sequential numbering 1-10
           return (
             <div
@@ -628,10 +637,13 @@ const VideoList = memo(function VideoList({ videos }) {
                   {displayRank}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <VideoTitle title={videoTitle} />
+                  <VideoTitle title={String(videoTitle)} />
                   <div className="flex items-center gap-2 mt-0.5">
-                    <div className="text-[0.65rem] text-ge-dim truncate" title={channelTitle}>
-                      {channelTitle}
+                    <div
+                      className="text-[0.65rem] text-ge-dim truncate"
+                      title={String(channelTitle)}
+                    >
+                      {String(channelTitle)}
                     </div>
                     <span
                       className="inline-block rounded px-1.5 py-0.5 text-[0.52rem] font-medium tracking-wide shrink-0"
@@ -641,7 +653,7 @@ const VideoList = memo(function VideoList({ videos }) {
                         color: cat.text,
                       }}
                     >
-                      {video.video_category_id}
+                      {video.video_category_id as any}
                     </span>
                   </div>
                 </div>
@@ -668,7 +680,7 @@ const VideoList = memo(function VideoList({ videos }) {
                     Trending
                   </div>
                   <div className="font-display font-bold text-[0.8rem] text-ge-text">
-                    {video.trending_appearances || 0}x
+                    {Number(video.trending_appearances || 0)}x
                   </div>
                 </div>
               </div>

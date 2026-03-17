@@ -11,7 +11,7 @@ if (import.meta.env.MODE === 'production') {
   injectSpeedInsights();
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ThemeProvider>
       <App />

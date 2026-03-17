@@ -1,17 +1,24 @@
 import { useState, useCallback, useRef } from 'react';
-import { fetchTopChannels, fetchTopCategories, fetchTopVideos } from '../services/countries';
+import {
+  fetchTopChannels,
+  fetchTopCategories,
+  fetchTopVideos,
+  type TopChannelRow,
+  type TopCategoryRow,
+  type TopVideoRow,
+} from '../services/countries';
 
 export function useCountryData() {
-  const [selectedIso, setSelectedIso] = useState(null);
-  const [selectedName, setSelectedName] = useState(null);
-  const [channels, setChannels] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [videos, setVideos] = useState([]);
+  const [selectedIso, setSelectedIso] = useState<string | null>(null);
+  const [selectedName, setSelectedName] = useState<string | null>(null);
+  const [channels, setChannels] = useState<TopChannelRow[]>([]);
+  const [categories, setCategories] = useState<TopCategoryRow[]>([]);
+  const [videos, setVideos] = useState<TopVideoRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const abortRef = useRef(null);
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const selectCountry = useCallback(async (iso, name) => {
+  const selectCountry = useCallback(async (iso: string, name: string) => {
     if (!iso) return;
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -36,9 +43,10 @@ export function useCountryData() {
       setChannels(ch);
       setCategories(cat);
       setVideos(vid);
-    } catch (err) {
-      if (err.name === 'AbortError' || abortRef.current !== controller) return;
-      setError(err.message ?? 'Unknown error');
+    } catch (err: unknown) {
+      if (abortRef.current !== controller) return;
+      if (err instanceof Error && err.name === 'AbortError') return;
+      setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       if (abortRef.current === controller) {
         abortRef.current = null;

@@ -43,8 +43,8 @@
   --ge-logo-shadow: rgba(56, 189, 248, 0.45);
 }
 
-html[data-theme='day'] {
-  /* Day palette */
+html[data-theme='light'] {
+  /* Light palette */
   --color-ge-bg: #f6f9ff;
   --color-ge-panel: #eef4ff;
   --color-ge-surface: #ffffff;
@@ -77,7 +77,7 @@ html[data-theme='day'] {
   /* Logo glow (day): dark shadow on light header */
   --ge-logo-shadow: rgba(15, 23, 42, 0.55);
 }
-tale html,
+html,
 body,
 #root {
   height: 100%;
@@ -269,12 +269,12 @@ body,
   width: 100%;
 }
 
-.video-title-scroll > span {
+.video-title-scroll span {
   display: inline-block;
   white-space: nowrap;
 }
 
-.video-title-scroll:hover > span.hover-scroll {
+.video-title-scroll:hover span.hover-scroll {
   animation: scrollTextHover linear forwards;
   animation-duration: var(--animation-duration, 3s);
 }

@@ -5,10 +5,11 @@ import Sidebar from './components/Sidebar';
 import ThemeToggle from './components/ThemeToggle';
 import CategoryTrendingModal from './components/CategoryTrendingModal';
 import { useCountryData } from './hooks/useCountryData';
+import type { Country } from './data/countries';
 
 export default function App() {
   const [sensitivity, setSensitivity] = useState(5); // 0-10 range, 5 is centered
-  const [flyTarget, setFlyTarget] = useState(null);
+  const [flyTarget, setFlyTarget] = useState<{ lon: number; lat: number } | null>(null);
   const [showHints, setShowHints] = useState(true);
   const [showModal, setShowModal] = useState(false);
 
@@ -29,7 +30,7 @@ export default function App() {
   const handleExploreMore = useCallback(() => setShowModal(true), []);
 
   const handleSearchSelect = useCallback(
-    (country) => {
+    (country: Country) => {
       setFlyTarget({ lon: country.lng, lat: country.lat });
       selectCountry(country.iso, country.name);
     },

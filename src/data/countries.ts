@@ -1,7 +1,16 @@
 // Country list used for search autocomplete + fly-to coordinates.
 // `num` is the iso 3166-1 numeric code (zero-padded to 3 digits) used by the topojson world atlas.
 
-const COUNTRIES = [
+export type Country = {
+  name: string;
+  iso: string;
+  alpha2: string;
+  num: string;
+  lat: number;
+  lng: number;
+};
+
+const COUNTRIES: Country[] = [
   { name: 'Afghanistan', iso: 'AFG', alpha2: 'AF', num: '004', lat: 33.9, lng: 67.7 },
   { name: 'Algeria', iso: 'DZA', alpha2: 'DZ', num: '012', lat: 28.0, lng: 3.0 },
   { name: 'Argentina', iso: 'ARG', alpha2: 'AR', num: '032', lat: -38.4, lng: -63.6 },
@@ -36,7 +45,7 @@ const COUNTRIES = [
   { name: 'Finland', iso: 'FIN', alpha2: 'FI', num: '246', lat: 61.9, lng: 25.7 },
   { name: 'France', iso: 'FRA', alpha2: 'FR', num: '250', lat: 46.2, lng: 2.2 },
   { name: 'Georgia', iso: 'GEO', alpha2: 'GE', num: '268', lat: 42.3, lng: 43.4 },
-  { name: 'Germany', iso: 'DEU', alpha2: 'DE', num: 51.2, lng: 10.4 },
+  { name: 'Germany', iso: 'DEU', alpha2: 'DE', num: '276', lat: 51.2, lng: 10.4 },
   { name: 'Ghana', iso: 'GHA', alpha2: 'GH', num: '288', lat: 7.9, lng: -1.0 },
   { name: 'Greece', iso: 'GRC', alpha2: 'GR', num: '300', lat: 39.1, lng: 22.0 },
   { name: 'Greenland', iso: 'GRL', alpha2: 'GL', num: '304', lat: 71.7, lng: -42.6 },

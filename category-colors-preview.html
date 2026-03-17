@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Category Colors Preview</title>
+    <style>
+      body {
+        background: #0f0f0f;
+        font-family: system-ui, sans-serif;
+        padding: 2rem;
+        margin: 0;
+      }
+      h1 {
+        color: #e5e5e5;
+        font-size: 1rem;
+        font-weight: 500;
+        margin-bottom: 1.5rem;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+      }
+      .card {
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .label {
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+      .swatches {
+        display: flex;
+        gap: 0.4rem;
+        align-items: center;
+      }
+      .swatch {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .swatch-label {
+        font-size: 0.65rem;
+        color: rgba(255, 255, 255, 0.4);
+        margin-top: 2px;
+        text-align: center;
+      }
+      .swatch-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Category Colors</h1>
+    <div class="grid" id="grid"></div>
+
+    <script>
+      const CATEGORY_COLORS = {
+        Gaming: { bg: 'rgba(139,92,246,0.08)', border: 'rgba(139,92,246,0.35)', text: '#a78bfa' },
+        Sports: { bg: 'rgba(52,211,153,0.08)', border: 'rgba(52,211,153,0.35)', text: '#34d399' },
+        Music: { bg: 'rgba(251,146,60,0.08)', border: 'rgba(251,146,60,0.35)', text: '#fb923c' },
+        Entertainment: {
+          bg: 'rgba(56,189,248,0.08)',
+          border: 'rgba(56,189,248,0.35)',
+          text: '#38bdf8',
+        },
+        'People & Blogs': {
+          bg: 'rgba(244,114,182,0.08)',
+          border: 'rgba(244,114,182,0.35)',
+          text: '#f472b6',
+        },
+        'News & Politics': {
+          bg: 'rgba(248,113,113,0.08)',
+          border: 'rgba(248,113,113,0.35)',
+          text: '#f87171',
+        },
+        Comedy: { bg: 'rgba(253,224,71,0.08)', border: 'rgba(253,224,71,0.35)', text: '#fde047' },
+        Education: {
+          bg: 'rgba(45,212,191,0.08)',
+          border: 'rgba(45,212,191,0.35)',
+          text: '#2dd4bf',
+        },
+        'Film & Animation': {
+          bg: 'rgba(244,63,94,0.08)',
+          border: 'rgba(244,63,94,0.35)',
+          text: '#f43f5e',
+        },
+        'Science & Technology': {
+          bg: 'rgba(96,165,250,0.08)',
+          border: 'rgba(96,165,250,0.35)',
+          text: '#60a5fa',
+        },
+        'Howto & Style': {
+          bg: 'rgba(217,70,239,0.08)',
+          border: 'rgba(217,70,239,0.35)',
+          text: '#d946ef',
+        },
+        'Autos & Vehicles': {
+          bg: 'rgba(74,222,128,0.08)',
+          border: 'rgba(74,222,128,0.35)',
+          text: '#4ade80',
+        },
+        'Travel & Events': {
+          bg: 'rgba(251,191,36,0.08)',
+          border: 'rgba(251,191,36,0.35)',
+          text: '#fbbf24',
+        },
+        'Pets & Animals': {
+          bg: 'rgba(163,230,53,0.08)',
+          border: 'rgba(163,230,53,0.35)',
+          text: '#a3e635',
+        },
+      };
+
+      const grid = document.getElementById('grid');
+
+      for (const [name, colors] of Object.entries(CATEGORY_COLORS)) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.style.background = colors.bg;
+        card.style.border = `1.5px solid ${colors.border}`;
+
+        const label = document.createElement('div');
+        label.className = 'label';
+        label.style.color = colors.text;
+        label.textContent = name;
+
+        const swatches = document.createElement('div');
+        swatches.className = 'swatches';
+
+        const entries = [
+          { key: 'bg', value: colors.bg },
+          { key: 'border', value: colors.border },
+          { key: 'text', value: colors.text },
+        ];
+
+        for (const { key, value } of entries) {
+          const wrap = document.createElement('div');
+          wrap.className = 'swatch-wrap';
+
+          const swatch = document.createElement('div');
+          swatch.className = 'swatch';
+          swatch.style.background = value;
+          swatch.title = value;
+
+          const sl = document.createElement('div');
+          sl.className = 'swatch-label';
+          sl.textContent = key;
+
+          wrap.appendChild(swatch);
+          wrap.appendChild(sl);
+          swatches.appendChild(wrap);
+        }
+
+        const hex = document.createElement('div');
+        hex.style.fontSize = '0.7rem';
+        hex.style.color = 'rgba(255,255,255,0.3)';
+        hex.textContent = colors.text;
+
+        card.appendChild(label);
+        card.appendChild(swatches);
+        card.appendChild(hex);
+        grid.appendChild(card);
+      }
+    </script>
+  </body>
+</html>

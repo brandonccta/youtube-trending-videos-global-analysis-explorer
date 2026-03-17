@@ -25,6 +25,7 @@ This app is built on the **YouTube Trending Videos Global** dataset from Kaggle:
 `https://www.kaggle.com/datasets/canerkonuk/youtube-trending-videos-global/data`
 
 It provides, for many countries:
+
 - **Video**: title, category, duration, views, likes, comments, tags
 - **Channel**: title, subscriber count, country
 - **Trending**: date and country each video appeared in the trending list
@@ -172,12 +173,14 @@ youtube-trending-videos-global-analysis-explorer/
 ## 6. Quick Setup
 
 **Prereqs**
+
 - Node.js 18+, npm
 - Python 3.8+ with PySpark (to rerun the pipeline)
 - Supabase (or any PostgreSQL instance)
 - Downloaded Kaggle dataset
 
 **Backend**
+
 - `cd server && npm install`
 - Copy `.env.example` to `.env` and set either `DATABASE_URL` or individual `DB_*` vars plus `CORS_ORIGIN=http://localhost:3000`.
 - Create tables using `backend/migrations/create_tables.sql`.
@@ -185,11 +188,13 @@ youtube-trending-videos-global-analysis-explorer/
 - Start API: `npm run dev` → `http://localhost:4000`.
 
 **Frontend**
+
 - From project root: `npm install`
 - Copy `.env.example` to `.env` and set `VITE_API_BASE=http://localhost:4000` (or rely on Vite proxy).
 - Start dev server: `npm run dev` → open `http://localhost:3000`.
 
 **Regenerating Data (optional)**
+
 - Download the Kaggle CSV into your data directory.
 - `cd backend/pipeline/pyspark`
 - Run:
