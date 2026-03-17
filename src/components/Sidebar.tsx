@@ -2,10 +2,7 @@ import { useEffect, useMemo, useState, useRef, memo, useCallback, type CSSProper
 import tzLookup from 'tz-lookup';
 import COUNTRIES, { type Country } from '../data/countries';
 import { formatViews } from '../utils/formatNumber';
-import {
-  CATEGORY_COLORS,
-  DEFAULT_CATEGORY_COLORS as DEFAULT_CAT,
-} from '../utils/categoryColors';
+import { CATEGORY_COLORS, DEFAULT_CATEGORY_COLORS as DEFAULT_CAT } from '../utils/categoryColors';
 import type { TopChannelRow, TopCategoryRow, TopVideoRow } from '../services/countries';
 
 const MOBILE_BREAKPOINT = 640;
@@ -95,10 +92,7 @@ export default function Sidebar({
       let next = dragStartHeight.current + deltaY * vhPerPx;
       const minSnap = SHEET_SNAP_POINTS_VH[0]!;
       const maxSnap = SHEET_SNAP_POINTS_VH[SHEET_SNAP_POINTS_VH.length - 1]!;
-      next = Math.max(
-        minSnap,
-        Math.min(maxSnap, next)
-      );
+      next = Math.max(minSnap, Math.min(maxSnap, next));
       setSheetHeightVh(next);
       if (e.cancelable && e.touches) e.preventDefault();
     };
@@ -136,7 +130,9 @@ export default function Sidebar({
         : topVideos.length > 0;
 
   const countryByIso = useMemo(() => new Map(COUNTRIES.map((c) => [c.iso, c])), []);
-  const selectedCountry: Country | null = selectedIso ? (countryByIso.get(selectedIso) ?? null) : null;
+  const selectedCountry: Country | null = selectedIso
+    ? (countryByIso.get(selectedIso) ?? null)
+    : null;
 
   const timeZone = useMemo(() => {
     if (!selectedCountry) return null;
@@ -224,10 +220,14 @@ export default function Sidebar({
                 <span className="tracking-wide uppercase text-[0.54rem] text-ge-muted">
                   Local time
                 </span>
-                <span className="font-display font-semibold text-ge-text">{formattedTime ?? '—'}</span>
+                <span className="font-display font-semibold text-ge-text">
+                  {formattedTime ?? '—'}
+                </span>
               </div>
               <div className="flex items-center justify-between gap-3 mt-1">
-                <span className="tracking-wide uppercase text-[0.54rem] text-ge-muted">Timezone</span>
+                <span className="tracking-wide uppercase text-[0.54rem] text-ge-muted">
+                  Timezone
+                </span>
                 <span className="font-display font-semibold text-ge-dim">{timeZone ?? '—'}</span>
               </div>
               <div className="flex items-center justify-between gap-3 mt-1">
@@ -321,13 +321,7 @@ export default function Sidebar({
   );
 }
 
-const ChannelTitle = memo(function ChannelTitle({
-  title,
-  href,
-}: {
-  title: string;
-  href?: string;
-}) {
+const ChannelTitle = memo(function ChannelTitle({ title, href }: { title: string; href?: string }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const textRef = useRef<HTMLSpanElement | null>(null);
   const [shouldScroll, setShouldScroll] = useState(false);
@@ -462,7 +456,9 @@ const ChannelList = memo(function ChannelList({ channels }: { channels: TopChann
                   </div>
                 </div>
                 <div>
-                  <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">Trending</div>
+                  <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">
+                    Trending
+                  </div>
                   <div className="font-display font-bold text-[0.8rem] text-ge-text">
                     {Number(ch.trending_appearances || 0)}x
                   </div>
@@ -540,13 +536,17 @@ const CategoryList = memo(function CategoryList({ categories }: { categories: To
                   </div>
                 </div>
                 <div>
-                  <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">Likes</div>
+                  <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">
+                    Likes
+                  </div>
                   <div className="font-display font-bold text-[0.8rem] text-ge-text">
                     {formatViews(Number(cat.total_likes || 0))}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">Trending</div>
+                  <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">
+                    Trending
+                  </div>
                   <div className="font-display font-bold text-[0.8rem] text-ge-text">
                     {Number(cat.trending_appearances || 0)}x
                   </div>
@@ -639,7 +639,10 @@ const VideoList = memo(function VideoList({ videos }: { videos: TopVideoRow[] })
                 <div className="flex-1 min-w-0">
                   <VideoTitle title={String(videoTitle)} />
                   <div className="flex items-center gap-2 mt-0.5">
-                    <div className="text-[0.65rem] text-ge-dim truncate" title={String(channelTitle)}>
+                    <div
+                      className="text-[0.65rem] text-ge-dim truncate"
+                      title={String(channelTitle)}
+                    >
                       {String(channelTitle)}
                     </div>
                     <span
@@ -673,7 +676,9 @@ const VideoList = memo(function VideoList({ videos }: { videos: TopVideoRow[] })
                   </div>
                 </div>
                 <div>
-                  <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">Trending</div>
+                  <div className="text-[0.48rem] tracking-widest uppercase text-ge-muted">
+                    Trending
+                  </div>
                   <div className="font-display font-bold text-[0.8rem] text-ge-text">
                     {Number(video.trending_appearances || 0)}x
                   </div>
@@ -686,4 +691,3 @@ const VideoList = memo(function VideoList({ videos }: { videos: TopVideoRow[] })
     </>
   );
 });
-

@@ -133,4 +133,3 @@ const COUNTRIES: Country[] = [
 ];
 
 export default COUNTRIES;
-

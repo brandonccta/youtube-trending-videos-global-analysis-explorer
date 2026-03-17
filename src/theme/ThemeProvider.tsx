@@ -10,7 +10,13 @@ import {
   type ReactNode,
   type SetStateAction,
 } from 'react';
-import { THEME_MODE, getSystemTimeZone, resolveThemeFromTime, type ThemeMode, type ResolvedTheme } from './theme';
+import {
+  THEME_MODE,
+  getSystemTimeZone,
+  resolveThemeFromTime,
+  type ThemeMode,
+  type ResolvedTheme,
+} from './theme';
 
 type ThemeContextValue = {
   mode: ThemeMode;
@@ -74,7 +80,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   // keep resolved theme updated if mode changes.
   useEffect(() => {
-    const nextResolved = mode === THEME_MODE.AUTO ? resolveThemeFromTime({ timeZone }) : (mode as ResolvedTheme);
+    const nextResolved =
+      mode === THEME_MODE.AUTO ? resolveThemeFromTime({ timeZone }) : (mode as ResolvedTheme);
     setResolvedTheme(nextResolved);
   }, [mode, timeZone]);
 
@@ -109,4 +116,3 @@ export function useTheme(): ThemeContextValue {
   if (!ctx) throw new Error('useTheme must be used within <ThemeProvider>');
   return ctx;
 }
-

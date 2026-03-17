@@ -41,4 +41,3 @@ export function resolveThemeFromTime({
   const isDay = Number.isFinite(hour) && hour >= 6 && hour < 18;
   return isDay ? THEME_MODE.LIGHT : THEME_MODE.DARK;
 }
-
