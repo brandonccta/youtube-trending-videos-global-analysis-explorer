@@ -1,14 +1,14 @@
-import "dotenv/config";
-import express from "express";
-import cors from "cors";
-import pg from "pg";
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import pg from 'pg';
 const { Pool } = pg;
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
 
 // allow all origins in production, or specific origin in development
-const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000";
+const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
 app.use(cors({ origin: corsOrigin }));
 app.use(express.json());
 
@@ -18,20 +18,20 @@ let dbInitialized = false;
 
 async function initializeDatabase() {
   if (pool && dbInitialized) return;
-  
+
   // support both connection string (supabase/neon) and individual params
   const connectionConfig = process.env.DATABASE_URL
     ? {
         connectionString: process.env.DATABASE_URL,
-        ssl: process.env.DB_SSL !== "false" ? { rejectUnauthorized: false } : false,
+        ssl: process.env.DB_SSL !== 'false' ? { rejectUnauthorized: false } : false,
       }
     : {
-        host: process.env.DB_HOST ?? "localhost",
-        port: parseInt(process.env.DB_PORT ?? "5432"),
-        user: process.env.DB_USER ?? "postgres",
-        password: process.env.DB_PASSWORD ?? "",
-        database: process.env.DB_NAME ?? "youtube_analysis",
-        ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
+        host: process.env.DB_HOST ?? 'localhost',
+        port: parseInt(process.env.DB_PORT ?? '5432'),
+        user: process.env.DB_USER ?? 'postgres',
+        password: process.env.DB_PASSWORD ?? '',
+        database: process.env.DB_NAME ?? 'youtube_analysis',
+        ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
       };
 
   pool = new Pool({
@@ -44,12 +44,12 @@ async function initializeDatabase() {
   // test connection
   try {
     const client = await pool.connect();
-    const dbName = connectionConfig.database || connectionConfig.connectionString?.split("/").pop();
+    const dbName = connectionConfig.database || connectionConfig.connectionString?.split('/').pop();
     console.log(`[DB] Connected to "${dbName}"`);
     client.release();
     dbInitialized = true;
   } catch (err) {
-    console.error("[DB] Connection failed:", err.message);
+    console.error('[DB] Connection failed:', err.message);
     throw err;
   }
 }
@@ -94,18 +94,18 @@ async function assertTable(name) {
 // ── Routes ──────────────────────────────────────────────────────
 
 // list all tables
-app.get("/api/tables", async (_req, res) => {
+app.get('/api/tables', async (_req, res) => {
   try {
     await ensureDbInitialized();
     res.json(await getTableNames());
   } catch (err) {
-    console.error("[DB]", err.message);
-    res.status(500).json({ error: "Database error" });
+    console.error('[DB]', err.message);
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
 // describe a table's columns (postgresql equivalent of SHOW COLUMNS)
-app.get("/api/tables/:table/schema", async (req, res) => {
+app.get('/api/tables/:table/schema', async (req, res) => {
   try {
     await ensureDbInitialized();
     await assertTable(req.params.table);
@@ -128,7 +128,7 @@ app.get("/api/tables/:table/schema", async (req, res) => {
 });
 
 // country-specific helpers (used by the react app)
-app.get("/api/country/top_channels", async (req, res) => {
+app.get('/api/country/top_channels', async (req, res) => {
   try {
     await ensureDbInitialized();
     const { country } = req.query;
@@ -136,7 +136,7 @@ app.get("/api/country/top_channels", async (req, res) => {
       return res.status(400).json({ error: 'Missing "country" query parameter' });
     }
 
-    await assertTable("top10_channels_per_country");
+    await assertTable('top10_channels_per_country');
 
     const sql = `
       SELECT *
@@ -149,12 +149,12 @@ app.get("/api/country/top_channels", async (req, res) => {
     const result = await pool.query(sql, [country]);
     res.json(result.rows);
   } catch (err) {
-    console.error("[API] /api/country/top_channels:", err.message);
+    console.error('[API] /api/country/top_channels:', err.message);
     res.status(err.status ?? 500).json({ error: err.message });
   }
 });
 
-app.get("/api/country/top_categories", async (req, res) => {
+app.get('/api/country/top_categories', async (req, res) => {
   try {
     await ensureDbInitialized();
     const { country } = req.query;
@@ -162,7 +162,7 @@ app.get("/api/country/top_categories", async (req, res) => {
       return res.status(400).json({ error: 'Missing "country" query parameter' });
     }
 
-    await assertTable("top10_categories_per_country");
+    await assertTable('top10_categories_per_country');
 
     const sql = `
       SELECT *
@@ -175,12 +175,12 @@ app.get("/api/country/top_categories", async (req, res) => {
     const result = await pool.query(sql, [country]);
     res.json(result.rows);
   } catch (err) {
-    console.error("[API] /api/country/top_categories:", err.message);
+    console.error('[API] /api/country/top_categories:', err.message);
     res.status(err.status ?? 500).json({ error: err.message });
   }
 });
 
-app.get("/api/country/top_videos", async (req, res) => {
+app.get('/api/country/top_videos', async (req, res) => {
   try {
     await ensureDbInitialized();
     const { country } = req.query;
@@ -188,7 +188,7 @@ app.get("/api/country/top_videos", async (req, res) => {
       return res.status(400).json({ error: 'Missing "country" query parameter' });
     }
 
-    await assertTable("top10_videos_per_country");
+    await assertTable('top10_videos_per_country');
 
     const sql = `
       SELECT *
@@ -201,12 +201,12 @@ app.get("/api/country/top_videos", async (req, res) => {
     const result = await pool.query(sql, [country]);
     res.json(result.rows);
   } catch (err) {
-    console.error("[API] /api/country/top_videos:", err.message);
+    console.error('[API] /api/country/top_videos:', err.message);
     res.status(err.status ?? 500).json({ error: err.message });
   }
 });
 
-app.get("/api/country/category_trends", async (req, res) => {
+app.get('/api/country/category_trends', async (req, res) => {
   try {
     await ensureDbInitialized();
     const { country } = req.query;
@@ -234,12 +234,12 @@ app.get("/api/country/category_trends", async (req, res) => {
     const result = await pool.query(sql, [country]);
     res.json(result.rows);
   } catch (err) {
-    console.error("[API] /api/country/category_trends:", err.message);
+    console.error('[API] /api/country/category_trends:', err.message);
     res.status(err.status ?? 500).json({ error: err.message });
   }
 });
 
-app.get("/api/country/video_trends", async (req, res) => {
+app.get('/api/country/video_trends', async (req, res) => {
   try {
     await ensureDbInitialized();
     const { country } = req.query;
@@ -272,19 +272,19 @@ app.get("/api/country/video_trends", async (req, res) => {
     const result = await pool.query(sql, [country]);
     res.json(result.rows);
   } catch (err) {
-    console.error("[API] /api/country/video_trends:", err.message);
+    console.error('[API] /api/country/video_trends:', err.message);
     res.status(err.status ?? 500).json({ error: err.message });
   }
 });
 
 // generic table query (supports ?limit=100&offset=0 and simple equality filters)
-app.get("/api/tables/:table", async (req, res) => {
+app.get('/api/tables/:table', async (req, res) => {
   try {
     await ensureDbInitialized();
     await assertTable(req.params.table);
 
-    const limit = Math.min(parseInt(req.query.limit ?? "100"), 10000);
-    const offset = parseInt(req.query.offset ?? "0");
+    const limit = Math.min(parseInt(req.query.limit ?? '100'), 10000);
+    const offset = parseInt(req.query.offset ?? '0');
 
     const filters = { ...req.query };
     delete filters.limit;
@@ -299,7 +299,7 @@ app.get("/api/tables/:table", async (req, res) => {
       return `"${col}" = $${paramIndex++}`;
     });
 
-    if (whereClauses.length) sql += " WHERE " + whereClauses.join(" AND ");
+    if (whereClauses.length) sql += ' WHERE ' + whereClauses.join(' AND ');
     sql += ` LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
     vals.push(limit, offset);
 
@@ -311,45 +311,45 @@ app.get("/api/tables/:table", async (req, res) => {
 });
 
 // run a raw read-only query (POST { "sql": "SELECT ..." })
-app.post("/api/query", async (req, res) => {
+app.post('/api/query', async (req, res) => {
   try {
     await ensureDbInitialized();
     const { sql } = req.body;
-    if (!sql || typeof sql !== "string") {
+    if (!sql || typeof sql !== 'string') {
       return res.status(400).json({ error: 'Missing "sql" in request body' });
     }
 
     const normalized = sql.trim().toUpperCase();
     if (
-      !normalized.startsWith("SELECT") &&
-      !normalized.startsWith("SHOW") &&
-      !normalized.startsWith("DESCRIBE") &&
-      !normalized.startsWith("WITH")
+      !normalized.startsWith('SELECT') &&
+      !normalized.startsWith('SHOW') &&
+      !normalized.startsWith('DESCRIBE') &&
+      !normalized.startsWith('WITH')
     ) {
       return res
         .status(403)
-        .json({ error: "Only SELECT / SHOW / DESCRIBE / WITH queries are allowed" });
+        .json({ error: 'Only SELECT / SHOW / DESCRIBE / WITH queries are allowed' });
     }
 
     const result = await pool.query(sql);
     res.json(result.rows);
   } catch (err) {
-    console.error("[DB]", err.message);
+    console.error('[DB]', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
 // health check
-app.get("/api/health", async (_req, res) => {
+app.get('/api/health', async (_req, res) => {
   try {
     await ensureDbInitialized();
-    await pool.query("SELECT 1");
+    await pool.query('SELECT 1');
     const dbName = process.env.DATABASE_URL
-      ? process.env.DATABASE_URL.split("/").pop().split("?")[0]
-      : process.env.DB_NAME || "unknown";
-    res.json({ status: "ok", database: dbName });
+      ? process.env.DATABASE_URL.split('/').pop().split('?')[0]
+      : process.env.DB_NAME || 'unknown';
+    res.json({ status: 'ok', database: dbName });
   } catch {
-    res.status(503).json({ status: "unhealthy" });
+    res.status(503).json({ status: 'unhealthy' });
   }
 });
 
@@ -360,7 +360,7 @@ function cleanup() {
   if (shuttingDown) return;
   shuttingDown = true;
 
-  console.log("\nShutting down…");
+  console.log('\nShutting down…');
   pool?.end().catch(() => {});
 
   setTimeout(() => {
@@ -368,14 +368,14 @@ function cleanup() {
   }, 1000);
 }
 
-process.on("SIGINT", cleanup);
-process.on("SIGTERM", cleanup);
+process.on('SIGINT', cleanup);
+process.on('SIGTERM', cleanup);
 
 // ── Start (for local development only) ───────────────────────────
 // Only start server if not in Vercel environment
-if (process.env.VERCEL !== "1") {
+if (process.env.VERCEL !== '1') {
   start().catch((err) => {
-    console.error("Failed to start server:", err.message);
+    console.error('Failed to start server:', err.message);
     process.exit(1);
   });
 }

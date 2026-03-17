@@ -30,4 +30,3 @@
 /** @typedef {ApiRow & { date?: string, video_title?: string, category?: string, channel_title?: string, video_view_count?: number|string, video_like_count?: number|string, video_comment_count?: number|string, video_duration?: string|null, trending_appearances?: number|string }} VideoTrendRow */
 
 export {};
-

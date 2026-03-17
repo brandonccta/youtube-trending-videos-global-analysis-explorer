@@ -113,7 +113,10 @@ function buildChartBase({
 
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
-  const xScale = d3.scaleTime().domain(d3.extent(dates) as [Date, Date]).range([0, width]);
+  const xScale = d3
+    .scaleTime()
+    .domain(d3.extent(dates) as [Date, Date])
+    .range([0, width]);
   const yScale = d3
     .scaleLinear()
     .domain([0, Math.max(maxValue * 1.1, 1)])
@@ -122,9 +125,7 @@ function buildChartBase({
   const xAxis = d3
     .axisBottom(xScale)
     .ticks(isNarrow ? Math.min(8, Math.max(5, Math.floor(width / 80))) : d3.timeMonth.every(2))
-    .tickFormat(
-      d3.timeFormat('%Y-%m') as (value: Date | d3.NumberValue, i: number) => string
-    );
+    .tickFormat(d3.timeFormat('%Y-%m') as (value: Date | d3.NumberValue, i: number) => string);
 
   const xAxisG = g.append('g').attr('transform', `translate(0,${height})`).call(xAxis);
 

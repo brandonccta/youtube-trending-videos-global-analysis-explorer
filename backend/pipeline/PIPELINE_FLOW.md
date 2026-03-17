@@ -63,8 +63,9 @@ This document describes the complete data pipeline flow from raw data to Supabas
 ## Stage Details
 
 ### 1. Data Cleaning (`../data/clean_data.py`)
+
 - **Input**: Raw YouTube trending videos CSV
-- **Process**: 
+- **Process**:
   - Filters null values
   - Removes invalid data
   - Selects relevant columns
@@ -72,6 +73,7 @@ This document describes the complete data pipeline flow from raw data to Supabas
 - **Location**: Can be run locally or on cluster
 
 ### 2. Data Aggregation (`pyspark/aggregate_data.py`)
+
 - **Input**: Cleaned Parquet data
 - **Process**:
   - Top 10 videos per country
@@ -83,6 +85,7 @@ This document describes the complete data pipeline flow from raw data to Supabas
 - **Execution**: Typically on cluster via SSH
 
 ### 3. CSV Export (`pyspark/export_to_csv.py`)
+
 - **Input**: Aggregated DataFrames
 - **Process**: Exports each aggregation to CSV
 - **Output**: CSV files in `../data/csv/`
@@ -94,8 +97,9 @@ This document describes the complete data pipeline flow from raw data to Supabas
   - `video_trends_over_time.csv`
 
 ### 4. Database Import (`../scripts/import_csv_to_supabase.py`)
+
 - **Input**: CSV files from `../data/csv/`
-- **Process**: 
+- **Process**:
   - Connects to Supabase PostgreSQL
   - Imports CSV data into tables
   - Handles batch inserts
@@ -105,6 +109,7 @@ This document describes the complete data pipeline flow from raw data to Supabas
 ## Execution Methods
 
 ### Local Execution
+
 ```bash
 # 1. Clean data
 cd ../data
@@ -121,6 +126,7 @@ python import_csv_to_supabase.py
 ```
 
 ### Cluster Execution (via SSH)
+
 ```bash
 # Run complete pipeline on cluster
 cd backend-pipeline/cluster
@@ -129,17 +135,17 @@ cd backend-pipeline/cluster
 
 ## File Locations Reference
 
-| Component | Location | Description |
-|-----------|----------|-------------|
-| Data cleaning | `../data/clean_data.py` | PySpark cleaning script |
-| Raw data | External | Original YouTube dataset |
-| Cleaned data | Parquet files | Output from clean_data.py |
-| Aggregation | `pyspark/aggregate_data.py` | Main aggregation logic |
-| CSV export | `pyspark/export_to_csv.py` | CSV export script |
-| CSV output | `../data/csv/` | Generated CSV files |
-| Import script | `../scripts/import_csv_to_supabase.py` | Supabase import |
-| Database schema | `../migrations/create_tables_postgresql.sql` | Table definitions |
-| Cluster execution | `cluster/ssh_execute.sh` | SSH automation script |
+| Component         | Location                                     | Description               |
+| ----------------- | -------------------------------------------- | ------------------------- |
+| Data cleaning     | `../data/clean_data.py`                      | PySpark cleaning script   |
+| Raw data          | External                                     | Original YouTube dataset  |
+| Cleaned data      | Parquet files                                | Output from clean_data.py |
+| Aggregation       | `pyspark/aggregate_data.py`                  | Main aggregation logic    |
+| CSV export        | `pyspark/export_to_csv.py`                   | CSV export script         |
+| CSV output        | `../data/csv/`                               | Generated CSV files       |
+| Import script     | `../scripts/import_csv_to_supabase.py`       | Supabase import           |
+| Database schema   | `../migrations/create_tables_postgresql.sql` | Table definitions         |
+| Cluster execution | `cluster/ssh_execute.sh`                     | SSH automation script     |
 
 ## Notes
 

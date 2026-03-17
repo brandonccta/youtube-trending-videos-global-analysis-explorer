@@ -263,7 +263,9 @@ export default function CategoryTrendingModal({
 
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-ge-border/50 pb-3 pr-10 mt-4">
               <div className="flex items-center gap-3">
-                <div className="text-[0.6rem] tracking-[0.16em] uppercase text-ge-muted">Selected</div>
+                <div className="text-[0.6rem] tracking-[0.16em] uppercase text-ge-muted">
+                  Selected
+                </div>
                 <div className="font-display font-black text-[0.95rem] text-ge-text">
                   {selectedKeys.length} / {effectiveMax}
                 </div>
@@ -436,8 +438,7 @@ export default function CategoryTrendingModal({
                                   )}
                                   {durationStr && (
                                     <span>
-                                      Duration:{' '}
-                                      <span className="text-ge-text">{durationStr}</span>
+                                      Duration: <span className="text-ge-text">{durationStr}</span>
                                     </span>
                                   )}
                                 </div>

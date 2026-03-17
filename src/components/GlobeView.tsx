@@ -171,13 +171,25 @@ export default function GlobeView({
     s.path = d3.geoPath().projection(s.projection);
 
     const defs = svg.append('defs');
-    const og = defs.append('radialGradient').attr('id', 'ge-og').attr('cx', '38%').attr('cy', '36%');
+    const og = defs
+      .append('radialGradient')
+      .attr('id', 'ge-og')
+      .attr('cx', '38%')
+      .attr('cy', '36%');
     og.append('stop').attr('offset', '0%').attr('stop-color', 'var(--ge-globe-ocean-0)');
     og.append('stop').attr('offset', '100%').attr('stop-color', 'var(--ge-globe-ocean-1)');
-    const ag = defs.append('radialGradient').attr('id', 'ge-ag').attr('cx', '50%').attr('cy', '50%');
+    const ag = defs
+      .append('radialGradient')
+      .attr('id', 'ge-ag')
+      .attr('cx', '50%')
+      .attr('cy', '50%');
     ag.append('stop').attr('offset', '75%').attr('stop-color', 'transparent');
     ag.append('stop').attr('offset', '100%').attr('stop-color', 'var(--ge-globe-atmo)');
-    const sg = defs.append('radialGradient').attr('id', 'ge-sg').attr('cx', '32%').attr('cy', '28%');
+    const sg = defs
+      .append('radialGradient')
+      .attr('id', 'ge-sg')
+      .attr('cx', '32%')
+      .attr('cy', '28%');
     sg.append('stop').attr('offset', '0%').attr('stop-color', 'var(--ge-globe-sheen)');
     sg.append('stop').attr('offset', '60%').attr('stop-color', 'transparent');
 
@@ -189,7 +201,12 @@ export default function GlobeView({
       .attr('fill', 'none')
       .attr('stroke', 'var(--ge-globe-ring)')
       .attr('stroke-width', 18);
-    svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', s.radius).attr('fill', 'url(#ge-og)');
+    svg
+      .append('circle')
+      .attr('cx', cx)
+      .attr('cy', cy)
+      .attr('r', s.radius)
+      .attr('fill', 'url(#ge-og)');
     svg
       .append('path')
       .datum(d3.geoGraticule()())
@@ -264,7 +281,9 @@ export default function GlobeView({
         .attr('class', 'ge-country')
         .attr('d', s.path)
         .attr('fill', (d: any) =>
-          NUM_TO_ISO[String(d.id)] === s.activeIso ? 'var(--ge-globe-land-active)' : 'var(--ge-globe-land)'
+          NUM_TO_ISO[String(d.id)] === s.activeIso
+            ? 'var(--ge-globe-land-active)'
+            : 'var(--ge-globe-land)'
         )
         .attr('stroke', 'var(--ge-globe-stroke)')
         .attr('stroke-width', 0.5)
@@ -438,4 +457,3 @@ export default function GlobeView({
     </div>
   );
 }
-
