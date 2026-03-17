@@ -1,23 +1,31 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import COUNTRIES from '../data/countries';
+import COUNTRIES, { type Country } from '../data/countries';
 
-export default function SearchBar({ onSelect, onFocus, onFirstInteraction }) {
+export default function SearchBar({
+  onSelect,
+  onFocus,
+  onFirstInteraction,
+}: {
+  onSelect: (country: Country) => void;
+  onFocus?: () => void;
+  onFirstInteraction?: () => void;
+}) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState<Country[]>([]);
   const [open, setOpen] = useState(false);
   const [focusIdx, setFocusIdx] = useState(-1);
-  const wrapRef = useRef(null);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const handler = (e) => {
-      if (!wrapRef.current?.contains(e.target)) setOpen(false);
+    const handler = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   const handleInput = useCallback(
-    (e) => {
+    (e: React.ChangeEvent<HTMLInputElement>) => {
       onFirstInteraction?.();
       const q = e.target.value;
       setQuery(q);
@@ -48,7 +56,7 @@ export default function SearchBar({ onSelect, onFocus, onFirstInteraction }) {
   }, [onFirstInteraction, onFocus, query]);
 
   const pick = useCallback(
-    (c) => {
+    (c: Country) => {
       onFirstInteraction?.();
       setQuery(c.name);
       setOpen(false);
@@ -59,7 +67,7 @@ export default function SearchBar({ onSelect, onFocus, onFirstInteraction }) {
   );
 
   const handleKey = useCallback(
-    (e) => {
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (!open) return;
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -68,7 +76,8 @@ export default function SearchBar({ onSelect, onFocus, onFirstInteraction }) {
         e.preventDefault();
         setFocusIdx((i) => Math.max(i - 1, 0));
       } else if (e.key === 'Enter' && focusIdx >= 0) {
-        pick(results[focusIdx]);
+        const c = results[focusIdx];
+        if (c) pick(c);
       } else if (e.key === 'Escape') {
         setOpen(false);
       }
@@ -76,7 +85,7 @@ export default function SearchBar({ onSelect, onFocus, onFirstInteraction }) {
     [open, results, focusIdx, pick]
   );
 
-  const hl = useCallback((text, q) => {
+  const hl = useCallback((text: string, q: string) => {
     if (!q) return text;
     const lowerText = text.toLowerCase();
     const lowerQ = q.toLowerCase();
@@ -117,6 +126,7 @@ export default function SearchBar({ onSelect, onFocus, onFirstInteraction }) {
             setResults([]);
             setFocusIdx(-1);
           }}
+          type="button"
         >
           ✕
         </button>
@@ -141,3 +151,4 @@ export default function SearchBar({ onSelect, onFocus, onFirstInteraction }) {
     </div>
   );
 }
+
