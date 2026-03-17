@@ -206,6 +206,77 @@ app.get("/api/country/top_videos", async (req, res) => {
   }
 });
 
+app.get("/api/country/category_trends", async (req, res) => {
+  try {
+    await ensureDbInitialized();
+    const { country } = req.query;
+    if (!country) {
+      return res.status(400).json({ error: 'Missing "country" query parameter' });
+    }
+
+    const sql = `
+      SELECT
+        TO_CHAR(
+          TO_DATE(
+            "trending_year"::text || '-' || LPAD("trending_month"::text, 2, '0') || '-01',
+            'YYYY-MM-DD'
+          ),
+          'YYYY-MM-DD'
+        ) AS date,
+        "video_category_id" AS category,
+        "trending_appearances" AS trending_appearances,
+        "top5_tags" AS top5_tags
+      FROM "category_trends_over_time"
+      WHERE "video_trending_country" = $1
+      ORDER BY "trending_year" ASC, "trending_month" ASC, "video_category_id" ASC
+    `;
+
+    const result = await pool.query(sql, [country]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("[API] /api/country/category_trends:", err.message);
+    res.status(err.status ?? 500).json({ error: err.message });
+  }
+});
+
+app.get("/api/country/video_trends", async (req, res) => {
+  try {
+    await ensureDbInitialized();
+    const { country } = req.query;
+    if (!country) {
+      return res.status(400).json({ error: 'Missing "country" query parameter' });
+    }
+
+    const sql = `
+      SELECT
+        TO_CHAR(
+          TO_DATE(
+            "trending_year"::text || '-' || LPAD("trending_month"::text, 2, '0') || '-01',
+            'YYYY-MM-DD'
+          ),
+          'YYYY-MM-DD'
+        ) AS date,
+        "video_title" AS video_title,
+        "video_category_id" AS category,
+        "channel_title" AS channel_title,
+        "video_view_count" AS video_view_count,
+        "video_like_count" AS video_like_count,
+        "video_comment_count" AS video_comment_count,
+        "video_duration" AS video_duration,
+        "trending_appearances" AS trending_appearances
+      FROM "video_trends_over_time"
+      WHERE "video_trending_country" = $1
+      ORDER BY "trending_year" ASC, "trending_month" ASC
+    `;
+
+    const result = await pool.query(sql, [country]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("[API] /api/country/video_trends:", err.message);
+    res.status(err.status ?? 500).json({ error: err.message });
+  }
+});
+
 // generic table query (supports ?limit=100&offset=0 and simple equality filters)
 app.get("/api/tables/:table", async (req, res) => {
   try {

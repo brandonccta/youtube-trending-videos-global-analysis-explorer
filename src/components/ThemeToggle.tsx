@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { THEME_MODE } from '../theme/theme';
 import { useTheme } from '../theme/ThemeProvider';
 
@@ -14,8 +14,8 @@ export default function ThemeToggle() {
   // when mode is auto, visually reflect the currently resolved theme.
   const displayMode = mode === THEME_MODE.AUTO ? resolvedTheme : mode;
 
-  const thumbStyle =
-    displayMode === THEME_MODE.NIGHT
+  const thumbStyle: CSSProperties =
+    displayMode === THEME_MODE.DARK
       ? { transform: 'translateX(100%)' }
       : { transform: 'translateX(0%)' };
 
@@ -24,7 +24,7 @@ export default function ThemeToggle() {
       <button
         type="button"
         onClick={() => {
-          const nextMode = displayMode === THEME_MODE.DAY ? THEME_MODE.NIGHT : THEME_MODE.DAY;
+          const nextMode = displayMode === THEME_MODE.LIGHT ? THEME_MODE.DARK : THEME_MODE.LIGHT;
           setMode(nextMode);
         }}
         className="relative inline-flex items-center justify-center rounded-full border border-ge-border bg-ge-surface w-24 h-8 cursor-pointer transition-colors"
@@ -46,7 +46,7 @@ export default function ThemeToggle() {
           className={[
             'relative z-10 w-12 flex items-center justify-center text-[0.62rem] font-display font-semibold tracking-wide uppercase',
             hasMounted && 'transition-colors duration-300 ease-out',
-            displayMode === THEME_MODE.DAY ? 'text-ge-bg' : 'text-ge-muted',
+            displayMode === THEME_MODE.LIGHT ? 'text-ge-bg' : 'text-ge-muted',
           ].join(' ')}
         >
           Light
@@ -55,7 +55,7 @@ export default function ThemeToggle() {
           className={[
             'relative z-10 w-12 flex items-center justify-center text-[0.62rem] font-display font-semibold tracking-wide uppercase',
             hasMounted && 'transition-colors duration-300 ease-out',
-            displayMode === THEME_MODE.NIGHT ? 'text-ge-bg' : 'text-ge-muted',
+            displayMode === THEME_MODE.DARK ? 'text-ge-bg' : 'text-ge-muted',
           ].join(' ')}
         >
           Dark
@@ -64,3 +64,4 @@ export default function ThemeToggle() {
     </div>
   );
 }
+

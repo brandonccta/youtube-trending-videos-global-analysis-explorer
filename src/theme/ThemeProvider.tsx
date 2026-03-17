@@ -6,17 +6,35 @@ import {
   useMemo,
   useRef,
   useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
 } from 'react';
-import { THEME_MODE, getSystemTimeZone, resolveThemeFromTime } from './theme';
+import { THEME_MODE, getSystemTimeZone, resolveThemeFromTime, type ThemeMode, type ResolvedTheme } from './theme';
 
-const ThemeContext = createContext(null);
+type ThemeContextValue = {
+  mode: ThemeMode;
+  setMode: Dispatch<SetStateAction<ThemeMode>>;
+  resolvedTheme: ResolvedTheme;
+  timeZone: string;
+};
 
-function applyResolvedThemeToDom(resolvedTheme) {
+const ThemeContext = createContext<ThemeContextValue | null>(null);
+
+function applyResolvedThemeToDom(resolvedTheme: ResolvedTheme) {
   const root = document.documentElement;
-  root.dataset.theme = resolvedTheme; // 'day' | 'night'
+  root.dataset.theme = resolvedTheme; // 'light' | 'dark'
 }
 
-function useAutoThemeTimer({ enabled, timeZone, onTick }) {
+function useAutoThemeTimer({
+  enabled,
+  timeZone,
+  onTick,
+}: {
+  enabled: boolean;
+  timeZone: string;
+  onTick: () => void;
+}) {
   const onTickRef = useRef(onTick);
   onTickRef.current = onTick;
 
@@ -30,7 +48,7 @@ function useAutoThemeTimer({ enabled, timeZone, onTick }) {
     const now = new Date();
     const msToNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
 
-    let intervalId;
+    let intervalId: number | undefined;
     const timeoutId = window.setTimeout(
       () => {
         tick();
@@ -46,17 +64,17 @@ function useAutoThemeTimer({ enabled, timeZone, onTick }) {
   }, [enabled, timeZone]); // re-align if timezone changes
 }
 
-export function ThemeProvider({ children }) {
+export function ThemeProvider({ children }: { children: ReactNode }) {
   // always start in auto on each page load; do not persist mode across reloads.
-  const [mode, setMode] = useState(THEME_MODE.AUTO); // 'auto' | 'day' | 'night'
+  const [mode, setMode] = useState<ThemeMode>(THEME_MODE.AUTO);
   const [timeZone] = useState(() => getSystemTimeZone());
-  const [resolvedTheme, setResolvedTheme] = useState(() => {
-    return mode === THEME_MODE.AUTO ? resolveThemeFromTime({ timeZone }) : mode;
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => {
+    return mode === THEME_MODE.AUTO ? resolveThemeFromTime({ timeZone }) : (mode as ResolvedTheme);
   });
 
   // keep resolved theme updated if mode changes.
   useEffect(() => {
-    const nextResolved = mode === THEME_MODE.AUTO ? resolveThemeFromTime({ timeZone }) : mode;
+    const nextResolved = mode === THEME_MODE.AUTO ? resolveThemeFromTime({ timeZone }) : (mode as ResolvedTheme);
     setResolvedTheme(nextResolved);
   }, [mode, timeZone]);
 
@@ -73,11 +91,11 @@ export function ThemeProvider({ children }) {
     applyResolvedThemeToDom(resolvedTheme);
   }, [resolvedTheme]);
 
-  const value = useMemo(
+  const value = useMemo<ThemeContextValue>(
     () => ({
       mode,
       setMode,
-      resolvedTheme, // 'day' | 'night'
+      resolvedTheme, // 'light' | 'dark'
       timeZone,
     }),
     [mode, resolvedTheme, timeZone]
@@ -86,8 +104,9 @@ export function ThemeProvider({ children }) {
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
-export function useTheme() {
+export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext);
   if (!ctx) throw new Error('useTheme must be used within <ThemeProvider>');
   return ctx;
 }
+
