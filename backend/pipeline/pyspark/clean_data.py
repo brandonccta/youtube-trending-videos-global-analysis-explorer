@@ -5,13 +5,7 @@ spark = SparkSession.builder \
     .appName("YouTube Data Cleaning") \
     .getOrCreate()
 
-df = spark.read.csv(
-    "youtube_trending_videos_global.csv",
-    header=True,
-    inferSchema=False,
-    multiLine=True,
-    escape='"'
-)
+df = spark.read.parquet("youtube_trending_videos_global.parquet")
 
 columns_to_keep = [
     "video_id",
@@ -28,7 +22,10 @@ columns_to_keep = [
     "channel_id",
     "channel_subscriber_count",
     "channel_country",
-    "channel_title"
+    "channel_title",
+    "channel_custom_url",
+    "channel_view_count",
+    "channel_video_count"
 ]
 
 cleaned_df = df.select(columns_to_keep) \
@@ -38,7 +35,8 @@ cleaned_df = df.select(columns_to_keep) \
     .filter(F.col("video_view_count").isNotNull()) \
     .filter(~F.lower(F.col("video_category_id")).isin("true", "false"))
 
-print("\nCleaned data preview (15 columns):")
+print("\nCleaned data preview:")
+# cleaned_df.show(5, truncate=50)
 
 cleaned_df.write.parquet(
     "cleaned_youtube_trending_videos_global",
