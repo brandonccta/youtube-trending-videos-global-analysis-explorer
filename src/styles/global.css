@@ -2,7 +2,7 @@
 @import 'flag-icons/css/flag-icons.min.css';
 
 @theme {
-  /* Colors */
+  /* colors */
   --color-ge-bg: #04080f;
   --color-ge-panel: #080d18;
   --color-ge-surface: #0d1526;
@@ -17,17 +17,17 @@
   --color-ge-muted: #4a6080;
   --color-ge-indigo: #818cf8;
 
-  /* Fonts */
+  /* fonts */
   --font-display: 'Outfit', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
-/* Theme vars (components + Tailwind) */
+/* theme vars (components + Tailwind) */
 :root {
-  /* Night */
+  /* night */
   --ge-globe-bg: radial-gradient(ellipse at 40% 40%, #070f1e, #02050a);
   --ge-globe-stars-opacity: 1;
-  /* Globe (night) */
+  /* globe (night) */
   --ge-globe-ocean-0: #0d2545;
   --ge-globe-ocean-1: #040d1e;
   --ge-globe-land: #1a3a5c;
@@ -61,7 +61,7 @@ html[data-theme='light'] {
 
   --ge-globe-bg: radial-gradient(ellipse at 40% 40%, #cfe8ff, #eef7ff);
   --ge-globe-stars-opacity: 0.15;
-  /* Globe (day): lighter land, darker selected */
+  /* globe (day): lighter land, darker selected */
   --ge-globe-ocean-0: #a8d7ff;
   --ge-globe-ocean-1: #eef7ff;
   --ge-globe-land: #8ecbff;
@@ -74,7 +74,7 @@ html[data-theme='light'] {
   --ge-globe-ring: rgba(37, 99, 235, 0.1);
   --ge-globe-shadow: rgba(37, 99, 235, 0.12);
 
-  /* Logo glow (day): dark shadow on light header */
+  /* logo glow (day): dark shadow on light header */
   --ge-logo-shadow: rgba(15, 23, 42, 0.55);
 }
 html,
@@ -210,7 +210,7 @@ body,
   }
 }
 
-/* Longer, symmetric timing for Explore More enter/exit.
+/* longer, symmetric timing for Explore More enter/exit.
    for enter, explicitly start hidden and below so the delay period
    doesn't show a "static" button before the animation begins. */
 .animate-explore-enter {
@@ -288,12 +288,12 @@ body,
   }
 }
 
-/* Mobile draggable sheet: smooth snap after drag */
+/* mobile draggable sheet: smooth snap after drag */
 .ge-sidebar-sheet-transition {
   transition: height 0.25s cubic-bezier(0.33, 1, 0.68, 1);
 }
 
-/* Mobile (≤640px) */
+/* mobile (≤640px) */
 @media (max-width: 640px) {
   .ge-main {
     flex-direction: column;
@@ -313,7 +313,7 @@ body,
     background: var(--color-ge-panel);
   }
 
-  /* Above threshold: panel overlays globe instead of squishing; globe keeps its size */
+  /* above threshold: panel overlays globe instead of squishing; globe keeps its size */
   .ge-main .ge-sidebar-mobile-wrap.ge-sidebar-mobile-overlay {
     position: absolute;
     bottom: 0;
@@ -339,7 +339,7 @@ body,
     transition: opacity 0.2s ease-out;
   }
 
-  /* Optional: override empty state (globe + hint text) position, e.g.: */
+  /* optional: override empty state (globe + hint text) position, e.g.: */
   .ge-main .ge-sidebar .ge-sidebar-body .ge-sidebar-empty-state {
     justify-content: flex-start;
     padding-top: 0.5rem;

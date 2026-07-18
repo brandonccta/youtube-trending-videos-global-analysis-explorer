@@ -1,5 +1,5 @@
-// Country list used for search autocomplete + fly-to coordinates.
-// `num` is the iso 3166-1 numeric code (zero-padded to 3 digits) used by the topojson world atlas.
+// country list used for search autocomplete + fly-to coordinates
+// `num` is the iso 3166-1 numeric code (zero-padded to 3 digits) used by the topojson world atlas
 
 export type Country = {
   name: string;
